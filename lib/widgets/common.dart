@@ -231,36 +231,45 @@ class FeedCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Wrap(
-                    spacing: 5,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (topic.isPinned)
-                        const StatusBadge('置顶',
-                            color: AppColors.danger, bg: AppColors.dangerLight),
-                      if (topic.isEssence)
-                        const StatusBadge('精华',
-                            color: AppColors.warn, bg: AppColors.warnLight),
-                      if (topic.bounty > 0)
-                        StatusBadge('悬赏 ${topic.bounty}',
-                            color: AppColors.gold, bg: AppColors.warnLight),
-                      if (topic.isLocked)
-                        const StatusBadge('锁定',
-                            color: AppColors.text3, bg: AppColors.surface2),
-                      Flexible(
-                        child: Text(
-                          topic.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            height: 1.45,
-                          ),
-                        ),
-                      ),
-                    ],
+                  // 徽章行：仅在有状态徽章时显示
+                  if (topic.isPinned ||
+                      topic.isEssence ||
+                      topic.bounty > 0 ||
+                      topic.isLocked) ...[
+                    Wrap(
+                      spacing: 5,
+                      runSpacing: 4,
+                      children: [
+                        if (topic.isPinned)
+                          const StatusBadge('置顶',
+                              color: AppColors.danger,
+                              bg: AppColors.dangerLight),
+                        if (topic.isEssence)
+                          const StatusBadge('精华',
+                              color: AppColors.warn,
+                              bg: AppColors.warnLight),
+                        if (topic.bounty > 0)
+                          StatusBadge('悬赏 ${topic.bounty}',
+                              color: AppColors.gold,
+                              bg: AppColors.warnLight),
+                        if (topic.isLocked)
+                          const StatusBadge('锁定',
+                              color: AppColors.text3,
+                              bg: AppColors.surface2),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                  // 标题：独立一行，可换行最多两行
+                  Text(
+                    topic.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.45,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Row(

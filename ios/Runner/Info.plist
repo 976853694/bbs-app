@@ -47,6 +47,9 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<!-- 本地网络权限（iOS 14+，访问局域网后端必需） -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>需要访问本地网络以连接社区论坛服务器</string>
 	<!-- 相册权限（选择头像/附件） -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问相册以选择头像或上传图片</string>
