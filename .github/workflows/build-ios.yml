@@ -1,30 +1,20 @@
-name: Build iOS IPA
+name: Build iOS (未签名)
 
 # 触发条件：推送到 main 分支、手动触发、打 tag
 on:
   push:
     branches: [main, master]
     paths:
-      - '**'
+      - 'app/**'
       - '.github/workflows/build-ios.yml'
   workflow_dispatch:
-    inputs:
-      export_method:
-        description: '导出方式（app-store / ad-hoc / development）'
-        required: true
-        default: 'ad-hoc'
-        type: choice
-        options:
-          - ad-hoc
-          - app-store
-          - development
 
 env:
   FLUTTER_VERSION: '3.24.0'  # 按需调整
 
 jobs:
   build-ios:
-    name: Build iOS IPA
+    name: Build iOS (未签名)
     runs-on: macos-14
 
     steps:
@@ -49,71 +39,37 @@ jobs:
         working-directory: app
         run: flutter analyze --no-fatal-infos || true
 
-      # ===== 导入签名证书与描述文件 =====
-      - name: 导入证书 (.p12) 到钥匙串
-        env:
-          P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
-          P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
-        run: |
-          if [ -z "$P12_BASE64" ]; then
-            echo "⚠️ 未配置 IOS_P12_BASE64，将尝试使用无签名构建"
-          else
-            # 创建临时钥匙串
-            KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-            security create-keychain -p "" "$KEYCHAIN_PATH"
-            security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-            security unlock-keychain -p "" "$KEYCHAIN_PATH"
+      # 默认无证书：使用 --no-codesign 构建，不做任何签名。
+      # 产物 Runner.app 为未签名应用，需自行用 codesign + 证书重签后打包成 ipa。
+      - name: 构建未签名 Release 应用
+        working-directory: app
+        run: flutter build ios --release --no-codesign
 
-            # 解码并导入 p12
-            P12_PATH="$RUNNER_TEMP/cert.p12"
-            echo "$P12_BASE64" | base64 --decode > "$P12_PATH"
-            security import "$P12_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-            security list-keychain -d user -s "$KEYCHAIN_PATH"
-            security set-key-partition-list -S apple-tool:,apple: -s -k "" "$KEYCHAIN_PATH"
-            echo "✅ 证书导入成功"
+      # 把未签名的 Runner.app 打包成未签名 .ipa（方便传输/重签工具处理）。
+      # 注意：未签名 ipa 无法直接安装，必须先用你的证书重签。
+      - name: 打包为未签名 IPA
+        working-directory: app
+        run: |
+          APP_PATH="build/ios/iphoneos/Runner.app"
+          if [ -d "$APP_PATH" ]; then
+            mkdir -p build/ios/ipa
+            PAYLOAD="build/ios/ipa/Payload"
+            rm -rf "$PAYLOAD"
+            mkdir -p "$PAYLOAD"
+            cp -R "$APP_PATH" "$PAYLOAD/Runner.app"
+            cd build/ios/ipa
+            zip -qry "Runner-unsigned.ipa" Payload
+            rm -rf Payload
+            echo "✅ 已生成未签名 ipa：build/ios/ipa/Runner-unsigned.ipa"
+          else
+            echo "⚠️ 未找到 $APP_PATH，仅上传 .app"
           fi
 
-      - name: 导入描述文件 (.mobileprovision)
-        env:
-          PROVISION_BASE64: ${{ secrets.IOS_PROVISION_BASE64 }}
-        run: |
-          if [ -z "$PROVISION_BASE64" ]; then
-            echo "⚠️ 未配置 IOS_PROVISION_BASE64"
-          else
-            mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-            echo "$PROVISION_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/build.mobileprovision
-            echo "✅ 描述文件导入成功"
-          fi
-
-      # ===== 构建 IPA =====
-      - name: 生成 ExportOptions.plist
-        working-directory: app
-        env:
-          EXPORT_METHOD: ${{ github.event.inputs.export_method || 'ad-hoc' }}
-        run: |
-          cat > ios/ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>${EXPORT_METHOD}</string>
-            <key>compileBitcode</key>
-            <false/>
-          </dict>
-          </plist>
-          EOF
-          echo "✅ 已生成 ExportOptions.plist（method=${EXPORT_METHOD}）"
-
-      - name: 构建 Release IPA
-        working-directory: app
-        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
-
-      - name: 上传 IPA 产物
+      - name: 上传 IPA 产物（未签名）
         uses: actions/upload-artifact@v4
         with:
-          name: ios-ipa
+          name: ios-ipa-unsigned
           path: |
             app/build/ios/ipa/*.ipa
-            app/build/ios/archive/Runner.xcarchive
+            app/build/ios/iphoneos/Runner.app
           retention-days: 30

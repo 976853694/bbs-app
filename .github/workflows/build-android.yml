@@ -1,11 +1,11 @@
-name: Build Android APK
+name: Build Android APK (未签名)
 
 # 触发条件：推送到 main 分支、手动触发、打 tag
 on:
   push:
     branches: [main, master]
     paths:
-      - '**'
+      - 'app/**'
       - '.github/workflows/build-android.yml'
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ env:
 
 jobs:
   build-android:
-    name: Build Android APK
+    name: Build Android APK (未签名)
     runs-on: ubuntu-latest
 
     steps:
@@ -45,31 +45,16 @@ jobs:
         working-directory: app
         run: flutter analyze --no-fatal-infos || true
 
-      - name: 注入签名密钥库
+      # 默认无证书：不注入任何密钥库，直接构建未签名 APK。
+      # 产物 app-release-unsigned.apk 需自行用 apksigner/jarsigner 签名后安装或上架。
+      - name: 构建未签名 Release APK
         working-directory: app
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            mkdir -p android/app/keystore
-            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/keystore/release.jks
-            echo "✅ 已从 Secrets 恢复 release.jks"
-          else
-            echo "⚠️ 未配置 KEYSTORE_BASE64，将使用 debug 签名打包（仅用于测试，不可上架）"
-          fi
-
-      - name: 构建 Release APK
-        working-directory: app
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: flutter build apk --release --split-per-abi
 
-      - name: 上传 APK 产物
+      - name: 上传 APK 产物（未签名）
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
+          name: android-apk-unsigned
           path: |
             app/build/app/outputs/flutter-apk/*.apk
           retention-days: 30

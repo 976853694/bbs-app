@@ -22,7 +22,9 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0.0'
 }
 
-// ===== 签名配置：从环境变量读取（CI 打包用），本地无签名时回退 debug 签名 =====
+// ===== 签名配置（可选）=====
+// 默认【无证书】：不配置任何签名，release 构建产出未签名 APK（app-release-unsigned.apk），
+// 由用户自行用 apksigner 签名。若本地存在 key.properties（含 release.jks），则启用正式签名。
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
 if (keystorePropertiesFile.exists()) {
@@ -31,13 +33,12 @@ if (keystorePropertiesFile.exists()) {
     }
 }
 
-def hasReleaseSigning = keystorePropertiesFile.exists() || System.getenv("KEYSTORE_BASE64") != null
+def hasReleaseSigning = keystorePropertiesFile.exists() && keystoreProperties.getProperty('storeFile') != null
 
 def keystorePath = keystoreProperties.getProperty('storeFile')
-    ?: (System.getenv("KEYSTORE_PATH") ?: file('keystore/release.jks').absolutePath)
-def keystorePassword = keystoreProperties.getProperty('storePassword') ?: System.getenv("KEYSTORE_PASSWORD")
-def keyAlias = keystoreProperties.getProperty('keyAlias') ?: System.getenv("KEY_ALIAS")
-def keyPassword = keystoreProperties.getProperty('keyPassword') ?: System.getenv("KEY_PASSWORD")
+def keystorePassword = keystoreProperties.getProperty('storePassword')
+def keyAlias = keystoreProperties.getProperty('keyAlias')
+def keyPassword = keystoreProperties.getProperty('keyPassword')
 
 android {
     namespace "com.example.community_forum"
@@ -77,7 +78,10 @@ android {
 
     buildTypes {
         release {
-            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
+            // 默认无签名（未配置 key.properties 时不设置 signingConfig），产出未签名 APK
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             shrinkResources false
         }

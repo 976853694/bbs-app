@@ -94,16 +94,16 @@ flutter build appbundle --release
 flutter build ios --release
 ```
 
-### GitHub Actions 自动化打包
+### GitHub Actions 自动化打包（默认无证书）
 
-已配置 CI/CD，push 到 `main` 分支或手动触发即可自动打包 APK / IPA：
+已配置 CI/CD，push 到 `main` 分支或手动触发即可自动打包 **未签名** 产物，由你自行签名后安装/上架：
 
 | 平台 | Workflow 文件 | 产物 |
 |---|---|---|
-| Android | `.github/workflows/build-android.yml` | APK（分 ABI） |
-| iOS | `.github/workflows/build-ios.yml` | IPA |
+| Android | `.github/workflows/build-android.yml` | 未签名 APK（分 ABI） |
+| iOS | `.github/workflows/build-ios.yml` | 未签名 `Runner.app` + `Runner-unsigned.ipa` |
 
-**详细配置步骤（密钥/证书、GitHub Secrets 清单）见 [CI-CD.md](./CI-CD.md)。**
+**签名方法（apksigner / codesign）与完整说明见 [CI-CD.md](./CI-CD.md)。**
 
 ## 已对接的 API（对照后端 views）
 
