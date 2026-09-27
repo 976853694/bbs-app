@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../models.dart';
 import '../theme.dart';
 
 /// 头像：有图显示网络图，无图显示首字 + 色板底色。

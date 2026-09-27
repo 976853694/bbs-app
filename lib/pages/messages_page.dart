@@ -18,7 +18,7 @@ class MessagesPage extends StatefulWidget {
 
 class _MessagesPageState extends State<MessagesPage> {
   int _tab = 0;
-  final List<Notification> _notifs = [];
+  final List<AppNotification> _notifs = [];
   final List<Conversation> _convs = [];
   bool _loading = true;
   int _unread = 0;

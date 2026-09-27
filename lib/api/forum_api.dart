@@ -1,5 +1,6 @@
 import '../models.dart';
 import 'api_client.dart';
+import 'api_types.dart';
 
 /// 论坛 API 服务层：把后端接口封装成强类型方法，供页面与状态调用。
 class ForumApi {
@@ -207,7 +208,7 @@ class ForumApi {
       _client.post('topics/$topicId/accept/$replyId');
 
   // ---------- 通知 / 私信 ----------
-  Future<(Paged<Notification>, int)> notifications(
+  Future<(Paged<AppNotification>, int)> notifications(
       {String? cursor, String? kind}) async {
     final data = await _client.get('me/notifications',
         query: {
@@ -215,7 +216,7 @@ class ForumApi {
           if (kind != null) 'kind': kind,
         });
     final list = (data['list'] as List? ?? [])
-        .map((e) => Notification.fromJson(e as Map<String, dynamic>))
+        .map((e) => AppNotification.fromJson(e as Map<String, dynamic>))
         .toList();
     final unread = (data['unread'] as num?)?.toInt() ?? 0;
     return (

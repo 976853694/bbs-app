@@ -288,7 +288,7 @@ class Reply {
       );
 }
 
-class Notification {
+class AppNotification {
   final int id;
   final String kind;
   final String text;
@@ -296,7 +296,7 @@ class Notification {
   final bool isRead;
   final String createdAt;
 
-  Notification({
+  AppNotification({
     required this.id,
     required this.kind,
     required this.text,
@@ -305,7 +305,7 @@ class Notification {
     required this.createdAt,
   });
 
-  factory Notification.fromJson(Map<String, dynamic> j) => Notification(
+  factory AppNotification.fromJson(Map<String, dynamic> j) => AppNotification(
         id: (j['id'] as num?)?.toInt() ?? 0,
         kind: j['kind'] as String? ?? '',
         text: j['text'] as String? ?? '',

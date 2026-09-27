@@ -1,7 +1,3 @@
-import 'dart:convert';
-
-import 'package:dio/dio.dart';
-
 /// 统一 API 异常，携带后端错误码与提示。
 class ApiException implements Exception {
   final int code;
