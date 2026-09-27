@@ -21,16 +21,16 @@ scripts/
 
 ## 三、前置条件
 
-1. 项目已推送到 GitHub 仓库，`app/` 是其子目录。
+1. 项目已推送到 GitHub 仓库（仓库 `bbs-app` 的**根目录即 Flutter 工程本身**，`pubspec.yaml`、`lib/`、`android/`、`ios/` 均在顶层）。
 2. GitHub 仓库已开启 Actions（默认开启）。
 
-> 注意：workflow 里 `working-directory: app` 假设仓库根目录下是 `app/`。如果 `app/` 就是仓库根目录，请删掉所有 `working-directory: app` 行，并把路径里的 `app/` 前缀去掉。
+> 已适配：workflow 不含 `working-directory: app`，所有路径均为仓库根相对路径。若你的仓库结构不同，请自行调整。
 
 ## 四、Android APK（未签名）
 
 ### 1. 触发打包
 
-- **自动**：push 到 `main` 分支（仅 `app/**` 变更时）。
+- **自动**：push 到 `main` 分支（仅 `lib/**`、`android/**`、`pubspec.yaml` 等变更时）。
 - **手动**：Actions 页 → 选 `Build Android APK (未签名)` → **Run workflow**。
 
 ### 2. 下载产物

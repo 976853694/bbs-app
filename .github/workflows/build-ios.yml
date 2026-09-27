@@ -5,7 +5,9 @@ on:
   push:
     branches: [main, master]
     paths:
-      - 'app/**'
+      - 'lib/**'
+      - 'ios/**'
+      - 'pubspec.yaml'
       - '.github/workflows/build-ios.yml'
   workflow_dispatch:
 
@@ -32,23 +34,19 @@ jobs:
         run: flutter --version
 
       - name: 安装依赖
-        working-directory: app
         run: flutter pub get
 
       - name: 静态分析（可选）
-        working-directory: app
         run: flutter analyze --no-fatal-infos || true
 
       # 默认无证书：使用 --no-codesign 构建，不做任何签名。
       # 产物 Runner.app 为未签名应用，需自行用 codesign + 证书重签后打包成 ipa。
       - name: 构建未签名 Release 应用
-        working-directory: app
         run: flutter build ios --release --no-codesign
 
       # 把未签名的 Runner.app 打包成未签名 .ipa（方便传输/重签工具处理）。
       # 注意：未签名 ipa 无法直接安装，必须先用你的证书重签。
       - name: 打包为未签名 IPA
-        working-directory: app
         run: |
           APP_PATH="build/ios/iphoneos/Runner.app"
           if [ -d "$APP_PATH" ]; then
@@ -70,6 +68,6 @@ jobs:
         with:
           name: ios-ipa-unsigned
           path: |
-            app/build/ios/ipa/*.ipa
-            app/build/ios/iphoneos/Runner.app
+            build/ios/ipa/*.ipa
+            build/ios/iphoneos/Runner.app
           retention-days: 30

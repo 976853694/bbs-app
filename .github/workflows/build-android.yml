@@ -5,7 +5,9 @@ on:
   push:
     branches: [main, master]
     paths:
-      - 'app/**'
+      - 'lib/**'
+      - 'android/**'
+      - 'pubspec.yaml'
       - '.github/workflows/build-android.yml'
   workflow_dispatch:
 
@@ -38,17 +40,14 @@ jobs:
         run: flutter --version
 
       - name: 安装依赖
-        working-directory: app
         run: flutter pub get
 
       - name: 静态分析（可选，发现明显错误）
-        working-directory: app
         run: flutter analyze --no-fatal-infos || true
 
       # 默认无证书：不注入任何密钥库，直接构建未签名 APK。
       # 产物 app-release-unsigned.apk 需自行用 apksigner/jarsigner 签名后安装或上架。
       - name: 构建未签名 Release APK
-        working-directory: app
         run: flutter build apk --release --split-per-abi
 
       - name: 上传 APK 产物（未签名）
@@ -56,5 +55,5 @@ jobs:
         with:
           name: android-apk-unsigned
           path: |
-            app/build/app/outputs/flutter-apk/*.apk
+            build/app/outputs/flutter-apk/*.apk
           retention-days: 30
