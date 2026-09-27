@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 import '../api/api_types.dart';
 import '../api/forum_api.dart';
 import '../models.dart';
+import '../state/auth_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import 'chat_page.dart';
+import 'login_page.dart';
 
 /// 消息中心：通知 + 私信（延续 ui-app 08-messages）。
 class MessagesPage extends StatefulWidget {
@@ -35,10 +37,16 @@ class _MessagesPageState extends State<MessagesPage> {
   @override
   void initState() {
     super.initState();
-    _load();
+    // 游客不请求消息接口，直接显示登录引导
+    if (context.read<AuthState>().isLoggedIn) {
+      _load();
+    } else {
+      _loading = false;
+    }
   }
 
   Future<void> _load() async {
+    if (!context.read<AuthState>().isLoggedIn) return;
     final api = context.read<ForumApi>();
     try {
       final (notifs, unread) = await api.notifications();
@@ -67,27 +75,62 @@ class _MessagesPageState extends State<MessagesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoggedIn = context.watch<AuthState>().isLoggedIn;
+    // 游客登录后，自动拉取一次消息
+    if (isLoggedIn && _notifs.isEmpty && _convs.isEmpty && !_loading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('消息'),
         actions: [
-          TextButton(
-            onPressed: _readAll,
-            child: const Text('全部已读',
-                style: TextStyle(color: AppColors.brand, fontSize: 13)),
-          ),
+          if (isLoggedIn)
+            TextButton(
+              onPressed: _readAll,
+              child: const Text('全部已读',
+                  style: TextStyle(color: AppColors.brand, fontSize: 13)),
+            ),
         ],
       ),
-      body: Column(
+      body: !isLoggedIn
+          ? _guestView()
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                  child: _segmented(),
+                ),
+                Expanded(
+                  child: _loading
+                      ? const LoadingView()
+                      : _tab == 0
+                          ? _notifList()
+                          : _convList(),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _guestView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-            child: _segmented(),
-          ),
-          Expanded(
-            child: _loading
-                ? const LoadingView()
-                : _tab == 0 ? _notifList() : _convList(),
+          const Text('🔔', style: TextStyle(fontSize: 40)),
+          const SizedBox(height: 12),
+          const Text('登录后查看通知与私信',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () async {
+              await Navigator.push(
+                  context, MaterialPageRoute(builder: (_) => const LoginPage()));
+            },
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 32),
+              child: Text('登录 / 注册'),
+            ),
           ),
         ],
       ),

@@ -38,8 +38,10 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
     if (!ok) {
       _toast(auth.error ?? '登录失败');
+      return;
     }
-    // 登录成功后 RootPage 的 Consumer 会自动切换到主界面
+    // 登录成功：返回上一页（true），由调用方决定后续动作
+    Navigator.pop(context, true);
   }
 
   void _toast(String msg) {

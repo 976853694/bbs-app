@@ -58,20 +58,14 @@ class ForumApp extends StatelessWidget {
   }
 }
 
-/// 根页面：未登录跳登录页，已登录进入主框架。
+/// 根页面：游客也可访问，默认进入首页（主框架第一个 Tab）。
+/// 未登录不强制跳登录，需要登录的操作在具体入口处引导。
 class RootPage extends StatelessWidget {
   const RootPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthState>(
-      builder: (context, auth, _) {
-        if (!auth.isLoggedIn) {
-          return const LoginPage();
-        }
-        return const _Home();
-      },
-    );
+    return const _Home();
   }
 }
 
@@ -86,6 +80,11 @@ class _HomeState extends State<_Home> {
   int _unread = 0;
 
   Future<void> _publish() async {
+    // 游客发帖前先引导登录
+    if (!context.read<AuthState>().isLoggedIn) {
+      final ok = await _requireLogin();
+      if (!ok) return;
+    }
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const EditorPage()),
@@ -94,6 +93,15 @@ class _HomeState extends State<_Home> {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('发布成功')));
     }
+  }
+
+  /// 引导登录，登录成功返回 true，取消返回 false。
+  Future<bool> _requireLogin() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+    return result == true;
   }
 
   @override
