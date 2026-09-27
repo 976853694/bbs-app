@@ -1,0 +1,36 @@
+name: community_forum
+description: 社区论坛移动端 App（Android / iOS），消费 Django 论坛后端 API v1。
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # 网络
+  dio: ^5.4.0
+  # 状态管理
+  provider: ^6.1.1
+  # 本地存储（token、设备 ID）
+  shared_preferences: ^2.2.2
+  # 图片
+  cached_network_image: ^3.3.1
+  image_picker: ^1.0.7
+  # 富文本 / Markdown
+  flutter_markdown: ^0.7.1
+  # 工具
+  intl: ^0.19.0
+  uuid: ^4.3.3
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
