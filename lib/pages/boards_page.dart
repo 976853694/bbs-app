@@ -60,7 +60,7 @@ class _BoardsPageState extends State<BoardsPage>
         ),
         slivers: [
           const CupertinoSliverNavigationBar(
-            largeTitle: Text('版块'),
+            middle: Text('版块'),
             backgroundColor: Colors.white,
             border: Border(
               bottom: BorderSide(color: AppColors.separator, width: 0.5),

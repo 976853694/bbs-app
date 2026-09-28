@@ -79,7 +79,7 @@ class _BoardDetailPageState extends State<BoardDetailPage> {
         ),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: Text(board?.name ?? '版块'),
+            middle: Text(board?.name ?? '版块'),
             backgroundColor: AppColors.surface.withOpacity(0.85),
             border: const Border(
               bottom: BorderSide(color: AppColors.separator, width: 0.5),
@@ -90,7 +90,7 @@ class _BoardDetailPageState extends State<BoardDetailPage> {
               onPressed: _toggleFollow,
               child: Icon(
                 _following ? CupertinoIcons.star_fill : CupertinoIcons.star,
-                color: _following ? AppColors.gold : AppColors.iosBlue,
+                color: _following ? AppColors.iosBlue : AppColors.iosGrayBlue,
                 size: 24,
               ),
             ),

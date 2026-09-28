@@ -871,12 +871,12 @@ class IosEmptyView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 44),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(icon, style: const TextStyle(fontSize: 48)),
-            const SizedBox(height: 12),
+            Text(icon, style: const TextStyle(fontSize: 38)),
+            const SizedBox(height: 10),
             Text(
               title,
               style: AppText.headline.copyWith(color: AppColors.text2),

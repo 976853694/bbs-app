@@ -89,7 +89,7 @@ class _MessagesPageState extends State<MessagesPage> {
         physics: const BouncingScrollPhysics(),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: const Text('消息'),
+            middle: const Text('消息'),
             backgroundColor: AppColors.surface.withOpacity(0.85),
             border: const Border(
               bottom: BorderSide(color: AppColors.separator, width: 0.5),

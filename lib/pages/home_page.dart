@@ -76,7 +76,7 @@ class _HomePageState extends State<HomePage>
         slivers: [
           // iOS 大标题导航栏（滚动时收起为普通标题）
           CupertinoSliverNavigationBar(
-            largeTitle: const Text('社区论坛'),
+            middle: const Text('社区论坛'),
             backgroundColor: AppColors.surface.withOpacity(0.85),
             border: const Border(
               bottom: BorderSide(color: AppColors.separator, width: 0.5),

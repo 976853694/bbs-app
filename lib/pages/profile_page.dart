@@ -72,7 +72,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: Text(user?.displayName ?? '个人主页'),
+            middle: Text(user?.displayName ?? '个人主页'),
             backgroundColor: AppColors.surface.withOpacity(0.85),
             border: const Border(
               bottom: BorderSide(color: AppColors.separator, width: 0.5),

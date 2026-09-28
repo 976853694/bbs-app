@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -28,7 +29,7 @@ class UserAvatar extends StatelessWidget {
     Widget fallback = Container(
       width: size,
       height: size,
-      color: color,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       alignment: Alignment.center,
       child: Text(
         initial,
@@ -62,19 +63,18 @@ class LevelBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gradient = AppColors.levelGradient(level);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradient),
+        color: AppColors.levelBg,
         borderRadius: BorderRadius.circular(9),
       ),
       child: Text(
         name.isNotEmpty ? name : 'Lv$level',
         style: const TextStyle(
-          color: Colors.white,
+          color: AppColors.levelFg,
           fontSize: 10,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
@@ -93,8 +93,8 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppColors.text2;
-    final b = bg ?? AppColors.surface2;
+    final c = color ?? AppColors.badgeFg;
+    final b = bg ?? AppColors.badgeBg;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
@@ -275,21 +275,12 @@ class _FeedCardBodyState extends State<_FeedCardBody> {
                       runSpacing: 4,
                       children: [
                         if (topic.isPinned)
-                          const StatusBadge('置顶',
-                              color: AppColors.danger,
-                              bg: AppColors.dangerLight),
+                          const StatusBadge('置顶', color: AppColors.danger),
                         if (topic.isEssence)
-                          const StatusBadge('精华',
-                              color: AppColors.warn,
-                              bg: AppColors.warnLight),
+                          const StatusBadge('精华', color: AppColors.warn),
                         if (topic.bounty > 0)
-                          StatusBadge('悬赏 ${topic.bounty}',
-                              color: AppColors.gold,
-                              bg: AppColors.warnLight),
-                        if (topic.isLocked)
-                          const StatusBadge('锁定',
-                              color: AppColors.text3,
-                              bg: AppColors.surface2),
+                          StatusBadge('悬赏 ${topic.bounty}'),
+                        if (topic.isLocked) const StatusBadge('锁定'),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -326,11 +317,11 @@ class _FeedCardBodyState extends State<_FeedCardBody> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      _stat('👁', topic.viewCount),
+                      _stat(CupertinoIcons.eye, topic.viewCount),
                       const SizedBox(width: 14),
-                      _stat('💬', topic.replyCount),
+                      _stat(CupertinoIcons.chat_bubble, topic.replyCount),
                       const SizedBox(width: 14),
-                      _stat('👍', topic.likeCount),
+                      _stat(CupertinoIcons.hand_thumbsup, topic.likeCount),
                     ],
                   ),
                 ],
@@ -342,10 +333,11 @@ class _FeedCardBodyState extends State<_FeedCardBody> {
     );
   }
 
-  Widget _stat(String icon, int n) {
+  Widget _stat(IconData icon, int n) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(icon, style: const TextStyle(fontSize: 11)),
+        Icon(icon, size: 12, color: AppColors.text3),
         const SizedBox(width: 3),
         Text('$n',
             style: const TextStyle(color: AppColors.text3, fontSize: 11)),

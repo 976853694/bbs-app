@@ -95,7 +95,7 @@ class _PointsPageState extends State<PointsPage> {
         ),
         slivers: [
           const CupertinoSliverNavigationBar(
-            largeTitle: Text('积分中心'),
+            middle: Text('积分中心'),
             backgroundColor: Colors.white,
             border: Border(
               bottom: BorderSide(color: AppColors.separator, width: 0.5),
@@ -127,7 +127,7 @@ class _PointsPageState extends State<PointsPage> {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.brand, AppColors.purple],
+            colors: [AppColors.iosBlue, AppColors.brand],
           ),
           borderRadius: AppRadius.card,
         ),
@@ -379,7 +379,7 @@ class _ShopCardState extends State<_ShopCard> {
               const SizedBox(height: 3),
               Text('${item.cost} 积分',
                   style: AppText.caption.copyWith(
-                      color: AppColors.gold, fontWeight: FontWeight.w700)),
+                      color: AppColors.iosBlue, fontWeight: FontWeight.w600)),
             ],
           ),
         ),

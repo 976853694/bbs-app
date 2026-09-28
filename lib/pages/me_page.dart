@@ -30,7 +30,7 @@ class MePage extends StatelessWidget {
               physics: const BouncingScrollPhysics(),
               slivers: [
                 const CupertinoSliverNavigationBar(
-                  largeTitle: Text('我的'),
+                  middle: Text('我的'),
                   backgroundColor: Colors.white,
                   border: Border(
                     bottom: BorderSide(color: AppColors.separator, width: 0.5),
@@ -189,7 +189,6 @@ class MePage extends StatelessWidget {
         ),
         IosCell(
           icon: CupertinoIcons.device_phone_portrait,
-          iconBg: AppColors.purple,
           title: '设备管理',
           showArrow: true,
           onTap: () =>
@@ -197,7 +196,6 @@ class MePage extends StatelessWidget {
         ),
         IosCell(
           icon: CupertinoIcons.money_dollar_circle,
-          iconBg: AppColors.success,
           title: '积分中心',
           showArrow: true,
           onTap: () =>

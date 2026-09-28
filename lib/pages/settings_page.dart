@@ -115,7 +115,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     children: [
                       IosCell(
                         icon: CupertinoIcons.device_phone_portrait,
-                        iconBg: AppColors.purple,
                         title: '设备管理',
                         subtitle: '${_devices.length} 台在线设备',
                         showArrow: true,

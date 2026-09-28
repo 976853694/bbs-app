@@ -62,31 +62,30 @@ class AppColors {
   static const Color teal = Color(0xFF5AC8FA); // systemTeal
   static const Color indigo = Color(0xFF5856D6); // systemIndigo
 
-  /// 头像色板（延续 Web 端 av-1 ~ av-8）
+  /// 头像色板：低饱和柔和色（iOS 观感，避免列表花哨）
   static const List<Color> avatarPalette = [
-    Color(0xFF2F6EE0),
-    Color(0xFFE0562F),
-    Color(0xFF1A9E7F),
-    Color(0xFF7C4DFF),
-    Color(0xFFD4A017),
-    Color(0xFFD92D20),
-    Color(0xFF4A7C8C),
-    Color(0xFFC2418F),
+    Color(0xFF8FA8C8), // 雾蓝
+    Color(0xFFC4A08C), // 燕麦
+    Color(0xFF8FBFA8), // 豆绿
+    Color(0xFFA89CC4), // 藕紫
+    Color(0xFFC4B48C), // 沙卡其
+    Color(0xFFC4949C), // 藕粉
+    Color(0xFF8FB8C0), // 雾青
+    Color(0xFFB49CB0), // 灰梅
   ];
 
   /// 按用户 id 稳定取头像底色
   static Color avatarOf(int id) =>
       avatarPalette[id.abs() % avatarPalette.length];
 
-  /// 等级徽章渐变（延续 .level.l3/l5/l7/l9/l11）
-  static List<Color> levelGradient(int level) {
-    if (level >= 11) return const [Color(0xFFFF7A59), Color(0xFFD92D20)];
-    if (level >= 9) return const [Color(0xFFF0B849), Color(0xFFD4A017)];
-    if (level >= 7) return const [Color(0xFFB07DFF), Color(0xFF7C4DFF)];
-    if (level >= 5) return const [Color(0xFF5B8DEF), Color(0xFF2F6EE0)];
-    if (level >= 3) return const [Color(0xFF58B368), Color(0xFF1A7F37)];
-    return const [Color(0xFF8E8E93), Color(0xFF6E7781)];
-  }
+  // ---------- 徽章配色（克制：浅底 + 语义色文字） ----------
+  /// 中性徽章底（默认）
+  static const Color badgeBg = Color(0xFFF0F0F4);
+  /// 中性徽章文字
+  static const Color badgeFg = Color(0xFF6E6E78);
+  /// 等级徽章：统一中性（去渐变，避免列表花哨）
+  static const Color levelBg = Color(0xFFEDEDF2);
+  static const Color levelFg = Color(0xFF6E6E78);
 }
 
 /// iOS 圆角规范（Apple 连续圆角）

@@ -252,18 +252,15 @@ class _TopicPageState extends State<TopicPage> {
             runSpacing: 6,
             children: [
               if (t.isEssence)
-                const StatusBadge('精华',
-                    color: AppColors.warn, bg: AppColors.warnLight),
-              if (t.bounty > 0)
-                StatusBadge('悬赏 ${t.bounty}',
-                    color: AppColors.gold, bg: AppColors.warnLight),
+                const StatusBadge('精华', color: AppColors.warn),
+              if (t.bounty > 0) StatusBadge('悬赏 ${t.bounty}'),
               for (final tag in t.tags) TagChip(tag),
             ],
           ),
           const SizedBox(height: 10),
           Text(t.title,
               style: const TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.w700, height: 1.45)),
+                  fontSize: 19, fontWeight: FontWeight.w700, height: 1.4)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -293,8 +290,69 @@ class _TopicPageState extends State<TopicPage> {
               ),
             ],
           ),
+          // 正文（Markdown）：此前缺失，导致帖子内容不显示
+          if (t.content.trim().isNotEmpty) ...[
+            const SizedBox(height: 14),
+            MarkdownBody(
+              data: t.content,
+              physics: const NeverScrollableScrollPhysics(),
+              styleSheet: _markdownStyle(),
+            ),
+          ] else ...[
+            const SizedBox(height: 14),
+            const Text('（该帖子暂无正文）',
+                style: TextStyle(color: AppColors.text3, fontSize: 14)),
+          ],
         ],
       ),
+    );
+  }
+
+  /// iOS 阅读排版的 Markdown 样式（克制配色，正文主色为近黑）
+  MarkdownStyleSheet _markdownStyle() {
+    return MarkdownStyleSheet(
+      p: const TextStyle(
+          fontSize: 15, height: 1.75, color: AppColors.text, letterSpacing: -0.1),
+      pPadding: const EdgeInsets.symmetric(vertical: 6),
+      h1: const TextStyle(
+          fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.text),
+      h2: const TextStyle(
+          fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.text),
+      h3: const TextStyle(
+          fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text),
+      h4: const TextStyle(
+          fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.text),
+      h5: const TextStyle(
+          fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text),
+      h6: const TextStyle(
+          fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text2),
+      em: const TextStyle(fontStyle: FontStyle.italic),
+      strong: const TextStyle(fontWeight: FontWeight.w700),
+      blockquote: const TextStyle(color: AppColors.text2, fontSize: 15),
+      blockquotePadding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      blockquoteDecoration: const BoxDecoration(
+        color: AppColors.surface3,
+        border: Border(left: BorderSide(color: AppColors.fill, width: 3)),
+      ),
+      code: TextStyle(
+        fontSize: 13,
+        color: AppColors.text,
+        backgroundColor: AppColors.fill.withOpacity(0.55),
+      ),
+      codeblockPadding: const EdgeInsets.all(12),
+      codeblockDecoration: BoxDecoration(
+        color: AppColors.surface3,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      listBullet: const TextStyle(fontSize: 15, color: AppColors.text2),
+      listIndent: 22,
+      a: const TextStyle(color: AppColors.iosBlue, fontSize: 15),
+      horizontalRuleDecoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.border2, width: 1)),
+      ),
+      tableHead: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      tableBody: const TextStyle(fontSize: 14),
+      tableBorder: TableBorder.all(color: AppColors.border2, width: 0.5),
     );
   }
 
@@ -316,14 +374,12 @@ class _TopicPageState extends State<TopicPage> {
               child: _actBtn(
                   _favorited ? CupertinoIcons.star_fill : CupertinoIcons.star,
                   '收藏 ${t.favoriteCount}',
-                  _favorited ? AppColors.gold : null,
+                  _favorited ? AppColors.iosBlue : null,
                   _toggleFavorite,
                   animate: true)),
           Expanded(
               child: _actBtn(CupertinoIcons.share, '分享', null, () {})),
-          Expanded(
-              child: _actBtn(CupertinoIcons.flag, '举报', AppColors.danger,
-                  _report)),
+          Expanded(child: _actBtn(CupertinoIcons.flag, '举报', null, _report)),
         ],
       ),
     );
@@ -393,16 +449,17 @@ class _TopicPageState extends State<TopicPage> {
                         level: r.author.level, name: r.author.levelName),
                     if (isBest) ...[
                       const SizedBox(width: 6),
-                      const StatusBadge('✓ 已采纳',
-                          color: AppColors.success, bg: AppColors.successLight),
+                      const StatusBadge('✓ 已采纳', color: AppColors.success),
                     ],
                   ],
                 ),
                 const SizedBox(height: 6),
                 MarkdownBody(
                   data: r.content,
-                  styleSheet: MarkdownStyleSheet(
-                    p: const TextStyle(fontSize: 14, height: 1.7),
+                  physics: const NeverScrollableScrollPhysics(),
+                  styleSheet: _markdownStyle().copyWith(
+                    p: const TextStyle(
+                        fontSize: 14.5, height: 1.7, color: AppColors.text),
                   ),
                 ),
                 if (r.children.isNotEmpty)
