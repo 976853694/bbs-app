@@ -6,7 +6,6 @@ import '../api/api_types.dart';
 import '../api/forum_api.dart';
 import '../models.dart';
 import '../theme.dart';
-import '../widgets/common.dart';
 import '../widgets/ios.dart';
 import 'board_detail_page.dart';
 

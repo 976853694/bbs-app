@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../api/api_types.dart';
 import '../api/forum_api.dart';
 import '../models.dart';
-import '../state/auth_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/ios.dart';

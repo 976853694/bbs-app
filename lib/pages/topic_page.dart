@@ -295,7 +295,6 @@ class _TopicPageState extends State<TopicPage> {
             const SizedBox(height: 14),
             MarkdownBody(
               data: t.content,
-              physics: const NeverScrollableScrollPhysics(),
               styleSheet: _markdownStyle(),
             ),
           ] else ...[
@@ -456,7 +455,6 @@ class _TopicPageState extends State<TopicPage> {
                 const SizedBox(height: 6),
                 MarkdownBody(
                   data: r.content,
-                  physics: const NeverScrollableScrollPhysics(),
                   styleSheet: _markdownStyle().copyWith(
                     p: const TextStyle(
                         fontSize: 14.5, height: 1.7, color: AppColors.text),

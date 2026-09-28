@@ -25,7 +25,6 @@ class _MessagesPageState extends State<MessagesPage> {
   final List<AppNotification> _notifs = [];
   final List<Conversation> _convs = [];
   bool _loading = true;
-  int _unread = 0;
 
   static const _icons = {
     'reply': '💬',
@@ -51,7 +50,7 @@ class _MessagesPageState extends State<MessagesPage> {
     if (!context.read<AuthState>().isLoggedIn) return;
     final api = context.read<ForumApi>();
     try {
-      final (notifs, unread) = await api.notifications();
+      final (notifs, _) = await api.notifications();
       final convs = await api.conversations();
       setState(() {
         _notifs
@@ -60,7 +59,6 @@ class _MessagesPageState extends State<MessagesPage> {
         _convs
           ..clear()
           ..addAll(convs.list);
-        _unread = unread;
         _loading = false;
       });
     } on ApiException {
@@ -72,7 +70,6 @@ class _MessagesPageState extends State<MessagesPage> {
     final api = context.read<ForumApi>();
     hapticMedium();
     await api.readNotifications();
-    setState(() => _unread = 0);
     _load();
   }
 
