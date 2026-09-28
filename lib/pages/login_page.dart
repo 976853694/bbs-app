@@ -1,11 +1,13 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../state/auth_state.dart';
 import '../theme.dart';
+import '../widgets/ios.dart';
 import 'register_page.dart';
 
-/// 登录（延续 ui-app 15-login）。
+/// 登录（iOS 风格表单）。
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -40,6 +42,7 @@ class _LoginPageState extends State<LoginPage> {
       _toast(auth.error ?? '登录失败');
       return;
     }
+    hapticMedium();
     // 登录成功：返回上一页（true），由调用方决定后续动作
     Navigator.pop(context, true);
   }
@@ -54,153 +57,129 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final loading = context.watch<AuthState>().loading;
-    return Scaffold(
-      appBar: AppBar(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.iosGroupedBg,
+      navigationBar: const CupertinoNavigationBar(
+        backgroundColor: Colors.white,
+        border: null,
+      ),
+      child: SafeArea(
+        child: ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 26),
           children: [
-            const SizedBox(height: 20),
-            Container(
-              width: 64,
-              height: 64,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                    colors: [AppColors.brand, AppColors.brand2]),
-                borderRadius: BorderRadius.all(Radius.circular(18)),
-              ),
-              alignment: Alignment.center,
-              child: const Text('论',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w700)),
-            ),
-            const SizedBox(height: 12),
-            const Text('欢迎回来',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            const Text('登录社区论坛，继续你的精彩',
-                style: TextStyle(color: AppColors.text3, fontSize: 12)),
-            const SizedBox(height: 30),
-            TextField(
-              controller: _username,
-              decoration: const InputDecoration(
-                hintText: '用户名 / 邮箱',
-                prefixIcon: Icon(Icons.person_outline),
+            const SizedBox(height: 26),
+            // 品牌头
+            Center(
+              child: Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                      colors: [AppColors.brand, AppColors.brand2]),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                alignment: Alignment.center,
+                child: const Text('论',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w700)),
               ),
             ),
             const SizedBox(height: 14),
-            TextField(
-              controller: _password,
-              obscureText: _obscure,
-              decoration: InputDecoration(
-                hintText: '密码',
-                prefixIcon: const Icon(Icons.lock_outline),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                      _obscure ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _obscure = !_obscure),
-                ),
+            const Center(child: Text('欢迎回来', style: AppText.title2)),
+            const SizedBox(height: 4),
+            Center(
+              child: Text('登录社区论坛，继续你的精彩',
+                  style: AppText.footnote.copyWith(color: AppColors.text3)),
+            ),
+            const SizedBox(height: 30),
+            // 用户名
+            CupertinoTextField(
+              controller: _username,
+              placeholder: '用户名 / 邮箱',
+              prefix: const Padding(
+                padding: EdgeInsets.only(left: 12),
+                child: Icon(CupertinoIcons.person,
+                    size: 19, color: AppColors.text3),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.separator, width: 0.5),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
+            // 密码
+            CupertinoTextField(
+              controller: _password,
+              placeholder: '密码',
+              obscureText: _obscure,
+              prefix: const Padding(
+                padding: EdgeInsets.only(left: 12),
+                child: Icon(CupertinoIcons.lock,
+                    size: 19, color: AppColors.text3),
+              ),
+              suffix: CupertinoButton(
+                padding: const EdgeInsets.only(right: 8),
+                minSize: 0,
+                onPressed: () => setState(() => _obscure = !_obscure),
+                child: Icon(
+                    _obscure ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
+                    size: 19,
+                    color: AppColors.text3),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.separator, width: 0.5),
+              ),
+            ),
+            const SizedBox(height: 14),
+            // 记住我
             Row(
               children: [
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _remember,
-                      activeColor: AppColors.brand,
-                      visualDensity: VisualDensity.compact,
-                      onChanged: (v) => setState(() => _remember = v ?? true),
-                    ),
-                    const Text('记住我',
-                        style: TextStyle(fontSize: 13, color: AppColors.text2)),
-                  ],
+                CupertinoSwitch(
+                  value: _remember,
+                  activeColor: AppColors.success,
+                  onChanged: (v) => setState(() => _remember = v),
                 ),
-                const Spacer(),
-                const Text('忘记密码？',
-                    style: TextStyle(fontSize: 13, color: AppColors.brand)),
+                const SizedBox(width: 8),
+                const Text('记住我',
+                    style: AppText.subhead),
               ],
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: loading ? null : _login,
-                child: loading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Text('登录'),
-              ),
             ),
             const SizedBox(height: 22),
-            Row(
-              children: [
-                const Expanded(child: Divider()),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10),
-                  child: Text('其他登录方式',
-                      style:
-                          TextStyle(color: AppColors.text3, fontSize: 12)),
-                ),
-                const Expanded(child: Divider()),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _OAuthIcon('💬'),
-                SizedBox(width: 16),
-                _OAuthIcon('🐧'),
-                SizedBox(width: 16),
-                _OAuthIcon('🐙'),
-              ],
+            // 登录按钮
+            IosButton(
+              label: loading ? '登录中…' : '登录',
+              onTap: _login,
+              enabled: !loading,
             ),
             const SizedBox(height: 26),
+            // 注册入口
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text('还没有账号？',
-                    style: TextStyle(color: AppColors.text2, fontSize: 13)),
-                GestureDetector(
-                  onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const RegisterPage())),
+                    style: AppText.subhead),
+                CupertinoButton(
+                  padding: const EdgeInsets.only(left: 4),
+                  minSize: 0,
+                  onPressed: () => Navigator.push(
+                      context, iosRoute<void>(const RegisterPage())),
                   child: const Text('立即注册',
-                      style: TextStyle(color: AppColors.brand, fontSize: 13)),
+                      style: TextStyle(
+                          color: AppColors.iosBlue, fontSize: 15)),
                 ),
               ],
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _OAuthIcon extends StatelessWidget {
-  const _OAuthIcon(this.emoji);
-  final String emoji;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.border),
-      ),
-      alignment: Alignment.center,
-      child: Text(emoji, style: const TextStyle(fontSize: 20)),
     );
   }
 }

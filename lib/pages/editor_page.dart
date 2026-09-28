@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,6 +6,7 @@ import '../api/api_types.dart';
 import '../api/forum_api.dart';
 import '../models.dart';
 import '../theme.dart';
+import '../widgets/ios.dart';
 
 /// 发帖编辑器：选版块 + 标题 + Markdown 正文（延续 ui-app 07-editor）。
 class EditorPage extends StatefulWidget {
@@ -69,64 +71,78 @@ class _EditorPageState extends State<EditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('发布主题'),
-        leading: IconButton(
-            icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-        actions: [
-          TextButton(
-            onPressed: _submitting ? null : _submit,
-            child: _submitting
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.brand))
-                : const Text('发布', style: TextStyle(color: AppColors.brand)),
-          ),
-        ],
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.iosGroupedBg,
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('发布主题'),
+        backgroundColor: AppColors.surface.withOpacity(0.9),
+        border: const Border(
+            bottom: BorderSide(color: AppColors.separator, width: 0.5)),
+        leading: CupertinoButton(
+          padding: EdgeInsets.zero,
+          minSize: 0,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消',
+              style: TextStyle(color: AppColors.iosBlue, fontSize: 16)),
+        ),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          minSize: 0,
+          onPressed: _submitting ? null : _submit,
+          child: _submitting
+              ? const CupertinoActivityIndicator(radius: 9)
+              : const Text('发布',
+                  style: TextStyle(
+                      color: AppColors.iosBlue,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600)),
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(14),
-        children: [
-          _boardSelector(),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _titleController,
-            maxLength: 100,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            decoration: const InputDecoration(
-              hintText: '请输入标题（不超过 100 字）',
-              counterText: '',
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            height: 220,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: TextField(
-              controller: _contentController,
-              maxLines: null,
-              expands: true,
-              textAlignVertical: TextAlignVertical.top,
-              style: const TextStyle(fontSize: 14),
-              decoration: const InputDecoration(
-                hintText: '支持 Markdown 语法…',
-                border: InputBorder.none,
-                filled: false,
-                contentPadding: EdgeInsets.all(12),
+      child: SafeArea(
+        child: ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: [
+            _boardSelector(),
+            const SizedBox(height: 14),
+            // 标题
+            CupertinoTextField(
+              controller: _titleController,
+              placeholder: '请输入标题（不超过 100 字）',
+              maxLength: 100,
+              style: AppText.headline,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.separator, width: 0.5),
               ),
             ),
-          ),
-          const SizedBox(height: 14),
-          const Text('发布即代表同意《社区规范》· 敏感词将触发审核',
-              style: TextStyle(color: AppColors.text3, fontSize: 11)),
-        ],
+            const SizedBox(height: 12),
+            // 正文
+            Container(
+              height: 230,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.separator, width: 0.5),
+              ),
+              child: CupertinoTextField(
+                controller: _contentController,
+                placeholder: '支持 Markdown 语法…',
+                maxLines: null,
+                expands: true,
+                textAlignVertical: TextAlignVertical.top,
+                style: AppText.subhead,
+                padding: const EdgeInsets.all(14),
+                decoration: const BoxDecoration(color: Colors.transparent),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text('发布即代表同意《社区规范》· 敏感词将触发审核',
+                style: AppText.caption2),
+          ],
+        ),
       ),
     );
   }
@@ -135,42 +151,95 @@ class _EditorPageState extends State<EditorPage> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.separator, width: 0.5),
       ),
-      child: ListTile(
-        dense: true,
-        leading: const Icon(Icons.forum_outlined, color: AppColors.brand),
-        title: Text(_board?.name ?? '选择版块'),
-        trailing: const Icon(Icons.arrow_drop_down),
-        onTap: () async {
-          final selected = await showModalBottomSheet<BoardBrief>(
-            context: context,
-            builder: (ctx) => SafeArea(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  for (final g in _groups) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-                      child: Text(g.name,
-                          style: const TextStyle(
-                              color: AppColors.text3, fontSize: 12)),
-                    ),
-                    for (final b in g.boards)
-                      ListTile(
-                        leading: Text(b.icon),
-                        title: Text(b.name),
-                        onTap: () => Navigator.pop(ctx, b),
-                      ),
-                  ],
-                ],
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        minSize: 0,
+        borderRadius: BorderRadius.zero,
+        onPressed: _pickBoard,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              const Icon(CupertinoIcons.square_grid_2x2,
+                  size: 19, color: AppColors.iosBlue),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Text(
+                  _board?.name ?? '选择版块',
+                  style: AppText.subhead.copyWith(
+                      color: _board == null
+                          ? AppColors.text3
+                          : AppColors.text),
+                ),
               ),
-            ),
-          );
-          if (selected != null) setState(() => _board = selected);
-        },
+              const Icon(CupertinoIcons.chevron_down,
+                  size: 15, color: AppColors.text3),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  /// iOS 风格版块选择弹窗
+  Future<void> _pickBoard() async {
+    final selected = await showCupertinoModalPopup<BoardBrief>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Container(
+          // iOS 弹层圆角
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppRadius.lg)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: const BoxDecoration(
+                  border: Border(
+                      bottom:
+                          BorderSide(color: AppColors.separator, width: 0.5)),
+                ),
+                child: const Center(
+                  child: Text('选择版块', style: AppText.headline),
+                ),
+              ),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final g in _groups) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(20, 12, 16, 6),
+                        child: Text(g.name, style: AppText.groupHeader),
+                      ),
+                      for (final b in g.boards)
+                        IosCell(
+                          icon: CupertinoIcons.number,
+                          iconBg: AppColors.brandLight,
+                          iconColor: AppColors.brand,
+                          title: '${b.icon}  ${b.name}',
+                          onTap: () => Navigator.pop(ctx, b),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selected != null) {
+      hapticSelection();
+      setState(() => _board = selected);
+    }
   }
 }

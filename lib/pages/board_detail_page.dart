@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,9 +7,10 @@ import '../api/forum_api.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/ios.dart';
 import 'topic_page.dart';
 
-/// 版块详情：主题色头图 + 置顶 + 帖子列表（延续 ui-app 03-board-detail）。
+/// 版块详情：iOS 大标题 + 头图 + 置顶 + 帖子列表（入场动画）。
 class BoardDetailPage extends StatefulWidget {
   const BoardDetailPage({super.key, required this.slug});
 
@@ -54,12 +56,14 @@ class _BoardDetailPageState extends State<BoardDetailPage> {
 
   Future<void> _toggleFollow() async {
     final api = context.read<ForumApi>();
+    hapticMedium();
     try {
       final following = await api.followBoard(widget.slug);
       setState(() => _following = following);
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
     }
   }
@@ -67,123 +71,179 @@ class _BoardDetailPageState extends State<BoardDetailPage> {
   @override
   Widget build(BuildContext context) {
     final board = _board;
-    return Scaffold(
-      body: CustomScrollView(
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.iosGroupedBg,
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         slivers: [
-          SliverAppBar(
-            expandedHeight: 150,
-            pinned: true,
-            backgroundColor: AppColors.brand,
-            foregroundColor: Colors.white,
-            title: Text(board?.name ?? ''),
-            actions: [
-              IconButton(
-                icon: Icon(_following ? Icons.star : Icons.star_border),
-                onPressed: _toggleFollow,
+          CupertinoSliverNavigationBar(
+            largeTitle: Text(board?.name ?? '版块'),
+            backgroundColor: AppColors.surface.withOpacity(0.85),
+            border: const Border(
+              bottom: BorderSide(color: AppColors.separator, width: 0.5),
+            ),
+            trailing: CupertinoButton(
+              padding: EdgeInsets.zero,
+              minSize: 0,
+              onPressed: _toggleFollow,
+              child: Icon(
+                _following ? CupertinoIcons.star_fill : CupertinoIcons.star,
+                color: _following ? AppColors.gold : AppColors.iosBlue,
+                size: 24,
+              ),
+            ),
+          ),
+          CupertinoSliverRefreshControl(onRefresh: () => _load(refresh: true)),
+          // 版块头图（iOS 渐变头）
+          if (board != null)
+            SliverToBoxAdapter(
+              child: FadeSlideIn(
+                child: Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.brand, AppColors.brand2],
+                    ),
+                    borderRadius: AppRadius.card,
+                  ),
+                  child: Row(
+                    children: [
+                      // Hero 共享动画：与版块卡片图标呼应
+                      Hero(
+                        tag: 'board-icon-${board.slug}',
+                        child: Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.22),
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            board.icon.isEmpty ? '💬' : board.icon,
+                            style: const TextStyle(fontSize: 26),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              board.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              board.description.isEmpty
+                                  ? '主题 ${board.topicCount} · 今日 ${board.todayCount}'
+                                  : board.description,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.85),
+                                fontSize: 12,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          if (_loading)
+            const SliverToBoxAdapter(
+              child: SizedBox(height: 400, child: FeedSkeleton(count: 4)),
+            )
+          else ...[
+            // 置顶区
+            if (_pinned.isNotEmpty) ...[
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20, 8, 16, 8),
+                  child: Text('📌 置顶', style: AppText.groupHeader),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: AppRadius.card,
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < _pinned.length; i++)
+                        FeedCard(
+                          topic: _pinned[i],
+                          index: i,
+                          onTap: () => _open(_pinned[i].id),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                      colors: [AppColors.brand, AppColors.brand2]),
+            // 全部帖子
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20, 16, 16, 8),
+                child: Text('全部主题', style: AppText.groupHeader),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: AppRadius.card,
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  board?.icon ?? '💬',
-                  style: const TextStyle(fontSize: 48),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < _topics.length; i++)
+                      FeedCard(
+                        topic: _topics[i],
+                        index: i,
+                        onTap: () => _open(_topics[i].id),
+                      ),
+                  ],
                 ),
               ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: board == null
-                ? const LoadingView()
-                : Container(
-                    color: AppColors.surface,
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-                    child: Row(
-                      children: [
-                        Text('主题 ${board.topicCount}',
-                            style: const TextStyle(
-                                color: AppColors.text2, fontSize: 12)),
-                        const SizedBox(width: 16),
-                        Text('今日 ${board.todayCount}',
-                            style: const TextStyle(
-                                color: AppColors.text2, fontSize: 12)),
-                        const Spacer(),
-                        TextButton.icon(
-                          onPressed: _toggleFollow,
-                          icon: Icon(
-                              _following ? Icons.star : Icons.star_border,
-                              size: 16,
-                              color: AppColors.brand),
-                          label: Text(_following ? '已关注' : '关注',
-                              style: const TextStyle(
-                                  color: AppColors.brand, fontSize: 12)),
-                        ),
-                      ],
-                    ),
-                  ),
-          ),
-          if (_pinned.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Text('📌 置顶',
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w700)),
-              ),
-            ),
-          if (_pinned.isNotEmpty)
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, i) => Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: FeedCard(
-                    topic: _pinned[i],
-                    onTap: () => _open(_pinned[i].id),
-                  ),
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: _hasMore
+                      ? CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          minSize: 0,
+                          onPressed: () => _load(),
+                          child: const Text('加载更多',
+                              style: TextStyle(color: AppColors.iosBlue)),
+                        )
+                      : const Text('— 已经到底啦 —',
+                          style:
+                              TextStyle(color: AppColors.text3, fontSize: 12)),
                 ),
-                childCount: _pinned.length,
               ),
             ),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, i) {
-                if (i == _topics.length) {
-                  return _hasMore
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Center(
-                              child: CircularProgressIndicator(
-                                  color: AppColors.brand)))
-                      : const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Center(
-                              child: Text('— 已经到底啦 —',
-                                  style: TextStyle(
-                                      color: AppColors.text3, fontSize: 11))));
-                }
-                final t = _topics[i];
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: FeedCard(topic: t, onTap: () => _open(t.id)),
-                );
-              },
-              childCount: _topics.length + 1,
-            ),
-          ),
+          ],
+          const SliverToBoxAdapter(child: SizedBox(height: 20)),
         ],
       ),
     );
@@ -191,6 +251,6 @@ class _BoardDetailPageState extends State<BoardDetailPage> {
 
   void _open(int id) => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => TopicPage(topicId: id)),
+        iosRoute<void>(TopicPage(topicId: id)),
       ).then((_) => _load(refresh: true));
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,8 +8,9 @@ import '../models.dart';
 import '../state/auth_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/ios.dart';
 
-/// 私信会话：聊天气泡 + 发送（延续 ui-app 09-chat）。
+/// 私信会话：iOS 风格聊天气泡 + 输入框（带发送动画）。
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key, required this.convId, required this.peer});
 
@@ -49,6 +51,7 @@ class _ChatPageState extends State<ChatPage> {
     final content = _controller.text.trim();
     if (content.isEmpty) return;
     final api = context.read<ForumApi>();
+    hapticMedium();
     try {
       await api.sendConvMessage(widget.convId, content);
       _controller.clear();
@@ -63,103 +66,145 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.iosGroupedBg,
+      navigationBar: CupertinoNavigationBar(
+        middle: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.peer.displayName),
+            Flexible(
+              child: Text(
+                widget.peer.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             const SizedBox(width: 6),
-            LevelBadge(
-                level: widget.peer.level, name: widget.peer.levelName),
+            LevelBadge(level: widget.peer.level, name: widget.peer.levelName),
+          ],
+        ),
+        backgroundColor: AppColors.surface.withOpacity(0.9),
+        border: const Border(
+            bottom: BorderSide(color: AppColors.separator, width: 0.5)),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: _loading
+                  ? const IosLoadingView()
+                  : _messages.isEmpty
+                      ? const IosEmptyView(
+                          icon: '💬', title: '还没有消息', sub: '打个招呼吧')
+                      : ListView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+                          itemCount: _messages.length,
+                          itemBuilder: (context, i) => FadeSlideIn(
+                            index: i,
+                            distance: 8,
+                            child: _bubble(_messages[i]),
+                          ),
+                        ),
+            ),
+            _inputBar(),
           ],
         ),
       ),
-      body: Column(
+    );
+  }
+
+  Widget _inputBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+            top: BorderSide(color: AppColors.separator, width: 0.5)),
+      ),
+      child: Row(
         children: [
           Expanded(
-            child: _loading
-                ? const LoadingView()
-                : ListView.builder(
-                    padding: const EdgeInsets.all(14),
-                    itemCount: _messages.length,
-                    itemBuilder: (context, i) {
-                      final m = _messages[i];
-                      return _bubble(m, m.mine);
-                    },
-                  ),
-          ),
-          Container(
-            color: AppColors.surface,
-            padding: EdgeInsets.only(
-                left: 12,
-                right: 12,
-                top: 8,
-                bottom: 8 + MediaQuery.of(context).padding.bottom),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 38,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface2,
-                      borderRadius: BorderRadius.circular(19),
-                    ),
-                    child: TextField(
-                      controller: _controller,
-                      style: const TextStyle(fontSize: 13),
-                      decoration: const InputDecoration(
-                        hintText: '输入消息…',
-                        hintStyle: TextStyle(color: AppColors.text3, fontSize: 13),
-                        border: InputBorder.none,
-                        isCollapsed: true,
-                      ),
-                      onSubmitted: (_) => _send(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _send,
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: const BoxDecoration(
-                        color: AppColors.brand, shape: BoxShape.circle),
-                    child: const Icon(Icons.arrow_upward,
-                        color: Colors.white, size: 20),
-                  ),
-                ),
-              ],
+            child: CupertinoTextField(
+              controller: _controller,
+              placeholder: '输入消息…',
+              style: AppText.subhead,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: AppColors.fill,
+                borderRadius: AppRadius.capsule,
+              ),
+              onSubmitted: (_) => _send(),
             ),
           ),
+          const SizedBox(width: 8),
+          _SendButton(onTap: _send),
         ],
       ),
     );
   }
 
-  Widget _bubble(ChatMessage m, bool mine) {
+  Widget _bubble(ChatMessage m) {
     return Align(
-      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: m.mine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
         constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.72),
         decoration: BoxDecoration(
-          color: mine ? AppColors.brand : AppColors.surface,
+          // iOS iMessage 风格：自己的消息用蓝色
+          color: m.mine ? AppColors.iosBlue : AppColors.surface,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(14),
-            topRight: const Radius.circular(14),
-            bottomLeft: Radius.circular(mine ? 14 : 4),
-            bottomRight: Radius.circular(mine ? 4 : 14),
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(m.mine ? 16 : 4),
+            bottomRight: Radius.circular(m.mine ? 4 : 16),
           ),
-          border: mine ? null : Border.all(color: AppColors.border),
+          border: m.mine
+              ? null
+              : Border.all(color: AppColors.separator, width: 0.5),
         ),
         child: Text(
           m.content,
-          style: TextStyle(
-              color: mine ? Colors.white : AppColors.text, fontSize: 13.5),
+          style: AppText.subhead.copyWith(
+              color: m.mine ? Colors.white : AppColors.text, height: 1.35),
+        ),
+      ),
+    );
+  }
+}
+
+/// 发送按钮（圆形，按压缩放）
+class _SendButton extends StatefulWidget {
+  const _SendButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  State<_SendButton> createState() => _SendButtonState();
+}
+
+class _SendButtonState extends State<_SendButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.9 : 1.0,
+        duration: AppMotion.fast,
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: const BoxDecoration(
+              color: AppColors.iosBlue, shape: BoxShape.circle),
+          child: const Icon(CupertinoIcons.arrow_up,
+              color: Colors.white, size: 19),
         ),
       ),
     );

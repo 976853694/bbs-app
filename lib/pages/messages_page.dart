@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,10 +8,11 @@ import '../models.dart';
 import '../state/auth_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/ios.dart';
 import 'chat_page.dart';
 import 'login_page.dart';
 
-/// 消息中心：通知 + 私信（延续 ui-app 08-messages）。
+/// 消息中心：通知 + 私信（iOS 分段控件 + 入场动画）。
 class MessagesPage extends StatefulWidget {
   const MessagesPage({super.key});
 
@@ -68,6 +70,7 @@ class _MessagesPageState extends State<MessagesPage> {
 
   Future<void> _readAll() async {
     final api = context.read<ForumApi>();
+    hapticMedium();
     await api.readNotifications();
     setState(() => _unread = 0);
     _load();
@@ -76,236 +79,213 @@ class _MessagesPageState extends State<MessagesPage> {
   @override
   Widget build(BuildContext context) {
     final isLoggedIn = context.watch<AuthState>().isLoggedIn;
-    // 游客登录后，自动拉取一次消息
+    // 游客登录后自动拉取一次
     if (isLoggedIn && _notifs.isEmpty && _convs.isEmpty && !_loading) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     }
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('消息'),
-        actions: [
-          if (isLoggedIn)
-            TextButton(
-              onPressed: _readAll,
-              child: const Text('全部已读',
-                  style: TextStyle(color: AppColors.brand, fontSize: 13)),
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.iosGroupedBg,
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: const Text('消息'),
+            backgroundColor: AppColors.surface.withOpacity(0.85),
+            border: const Border(
+              bottom: BorderSide(color: AppColors.separator, width: 0.5),
             ),
+            trailing: isLoggedIn
+                ? CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    minSize: 0,
+                    onPressed: _readAll,
+                    child: const Text('全部已读',
+                        style: TextStyle(
+                            color: AppColors.iosBlue, fontSize: 15)),
+                  )
+                : null,
+          ),
+          if (!isLoggedIn)
+            const SliverToBoxAdapter(child: _guestView())
+          else ...[
+            // iOS 分段控件
+            SliverToBoxAdapter(
+              child: IosSegmented(
+                tabs: const ['通知', '私信'],
+                selected: _tab,
+                onChanged: (i) => setState(() => _tab = i),
+              ),
+            ),
+            if (_loading)
+              const SliverToBoxAdapter(
+                child: SizedBox(height: 300, child: IosLoadingView()),
+              )
+            else if (_tab == 0)
+              _notifs.isEmpty
+                  ? const SliverToBoxAdapter(
+                      child: IosEmptyView(
+                          icon: '🔔', title: '暂无通知', sub: '有新消息时会在这里显示'),
+                    )
+                  : SliverToBoxAdapter(
+                      child: IosGroupCard(
+                        showSeparators: true,
+                        children: [
+                          for (var i = 0; i < _notifs.length; i++)
+                            FadeSlideIn(
+                              index: i,
+                              child: _notifRow(_notifs[i]),
+                            ),
+                        ],
+                      ),
+                    )
+            else
+              _convs.isEmpty
+                  ? const SliverToBoxAdapter(
+                      child: IosEmptyView(
+                          icon: '💬', title: '暂无私信', sub: '和好友聊聊吧'),
+                    )
+                  : SliverToBoxAdapter(
+                      child: IosGroupCard(
+                        children: [
+                          for (var i = 0; i < _convs.length; i++)
+                            FadeSlideIn(
+                              index: i,
+                              child: _convRow(_convs[i]),
+                            ),
+                        ],
+                      ),
+                    ),
+          ],
+          const SliverToBoxAdapter(child: SizedBox(height: 30)),
         ],
       ),
-      body: !isLoggedIn
-          ? _guestView()
-          : Column(
+    );
+  }
+
+  Widget _notifRow(AppNotification n) {
+    return Container(
+      color: n.isRead ? AppColors.surface : AppColors.brandLight,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.brandLight,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Text(_icons[n.kind] ?? '🔔',
+                style: const TextStyle(fontSize: 17)),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-                  child: _segmented(),
-                ),
-                Expanded(
-                  child: _loading
-                      ? const LoadingView()
-                      : _tab == 0
-                          ? _notifList()
-                          : _convList(),
-                ),
+                Text(n.text, style: AppText.subhead),
+                const SizedBox(height: 3),
+                Text(relativeTime(n.createdAt),
+                    style: AppText.caption2.copyWith(color: AppColors.text3)),
               ],
             ),
-    );
-  }
-
-  Widget _guestView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('🔔', style: TextStyle(fontSize: 40)),
-          const SizedBox(height: 12),
-          const Text('登录后查看通知与私信',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () async {
-              await Navigator.push(
-                  context, MaterialPageRoute(builder: (_) => const LoginPage()));
-            },
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32),
-              child: Text('登录 / 注册'),
-            ),
           ),
+          if (!n.isRead)
+            Container(
+              width: 8,
+              height: 8,
+              margin: const EdgeInsets.only(top: 6),
+              decoration: const BoxDecoration(
+                  color: AppColors.danger, shape: BoxShape.circle),
+            ),
         ],
       ),
     );
   }
 
-  Widget _segmented() {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _segItem(0, '通知', _unread)),
-          Expanded(child: _segItem(1, '私信', 0)),
-        ],
-      ),
-    );
-  }
-
-  Widget _segItem(int index, String label, int badge) {
-    final on = _tab == index;
-    return GestureDetector(
-      onTap: () => setState(() => _tab = index),
+  Widget _convRow(Conversation c) {
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minSize: 0,
+      borderRadius: BorderRadius.zero,
+      onPressed: () {
+        hapticLight();
+        Navigator.push(
+          context,
+          iosRoute<void>(ChatPage(convId: c.id, peer: c.peer)),
+        );
+      },
       child: Container(
-        height: 32,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: on ? AppColors.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: on
-              ? const [BoxShadow(color: Color(0x0A101828), blurRadius: 2)]
-              : null,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(label,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: on ? AppColors.brand : AppColors.text2,
-                  fontWeight: on ? FontWeight.w600 : FontWeight.w400,
-                )),
-            if (badge > 0) ...[
-              const SizedBox(width: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5),
-                constraints: const BoxConstraints(minWidth: 16),
-                height: 16,
-                decoration: BoxDecoration(
-                  color: AppColors.danger,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                alignment: Alignment.center,
-                child: Text('$badge',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600)),
+            UserAvatar(
+                name: c.peer.displayName, id: c.peer.id, url: c.peer.avatar),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          c.peer.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.subhead.copyWith(
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      LevelBadge(
+                          level: c.peer.level, name: c.peer.levelName),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    c.lastText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.caption.copyWith(color: AppColors.text3),
+                  ),
+                ],
               ),
-            ],
+            ),
+            const SizedBox(width: 8),
+            Text(relativeTime(c.updatedAt),
+                style: AppText.caption2.copyWith(color: AppColors.text3)),
+            const SizedBox(width: 4),
+            const Icon(CupertinoIcons.chevron_right,
+                size: 15, color: AppColors.text3),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _notifList() {
-    if (_notifs.isEmpty) return const EmptyView();
-    return ListView(
-      children: [
-        for (final n in _notifs)
-          Container(
-            color: n.isRead ? AppColors.surface : const Color(0xFFF5F9FF),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.brandLight,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(_icons[n.kind] ?? '🔔',
-                      style: const TextStyle(fontSize: 17)),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(n.text,
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 2),
-                      Text(relativeTime(n.createdAt),
-                          style: const TextStyle(
-                              color: AppColors.text3, fontSize: 11)),
-                    ],
-                  ),
-                ),
-                if (!n.isRead)
-                  Container(
-                    width: 7,
-                    height: 7,
-                    margin: const EdgeInsets.only(top: 6),
-                    decoration: const BoxDecoration(
-                        color: AppColors.danger, shape: BoxShape.circle),
-                  ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
+/// 游客登录引导
+class _guestView extends StatelessWidget {
+  const _guestView();
 
-  Widget _convList() {
-    if (_convs.isEmpty) return const EmptyView(icon: '💬', title: '暂无私信');
-    return ListView(
-      children: [
-        for (final c in _convs)
-          InkWell(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => ChatPage(convId: c.id, peer: c.peer)),
-            ),
-            child: Container(
-              color: AppColors.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Row(
-                children: [
-                  UserAvatar(
-                      name: c.peer.displayName,
-                      id: c.peer.id,
-                      url: c.peer.avatar),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(c.peer.displayName,
-                                style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600)),
-                            const SizedBox(width: 6),
-                            LevelBadge(
-                                level: c.peer.level,
-                                name: c.peer.levelName),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(c.lastText,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: AppColors.text3, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  Text(relativeTime(c.updatedAt),
-                      style:
-                          const TextStyle(color: AppColors.text3, fontSize: 11)),
-                ],
-              ),
-            ),
-          ),
-      ],
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 120),
+      child: IosEmptyView(
+        icon: '🔔',
+        title: '登录后查看通知与私信',
+        sub: '打开 App 即可浏览帖子，登录后可接收消息',
+        action: IosButton(
+          label: '登录 / 注册',
+          expand: false,
+          onTap: () =>
+              Navigator.push(context, iosRoute<bool>(const LoginPage())),
+        ),
+      ),
     );
   }
 }

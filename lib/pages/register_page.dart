@@ -1,10 +1,12 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../state/auth_state.dart';
 import '../theme.dart';
+import '../widgets/ios.dart';
 
-/// 注册（延续 ui-app 16-register）。
+/// 注册（iOS 风格表单）。
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -51,8 +53,12 @@ class _RegisterPageState extends State<RegisterPage> {
     if (!mounted) return;
     if (!ok) {
       _toast(auth.error ?? '注册失败');
+      return;
     }
-    // 注册成功后 RootPage 的 Consumer 会自动切换到主界面
+    hapticMedium();
+    _toast('注册成功，已自动登录');
+    // 注册成功，返回上一页
+    if (mounted) Navigator.pop(context, true);
   }
 
   void _toast(String msg) {
@@ -65,90 +71,110 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     final loading = context.watch<AuthState>().loading;
-    return Scaffold(
-      appBar: AppBar(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.iosGroupedBg,
+      navigationBar: const CupertinoNavigationBar(
+        backgroundColor: Colors.white,
+        border: null,
+      ),
+      child: SafeArea(
+        child: ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 26),
           children: [
-            const SizedBox(height: 12),
-            const Text('创建账号',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 14),
+            const Text('创建账号', style: AppText.title2),
             const SizedBox(height: 4),
-            const Text('加入社区，和同好一起交流',
-                style: TextStyle(color: AppColors.text3, fontSize: 12)),
+            Text('加入社区，和同好一起交流',
+                style: AppText.footnote.copyWith(color: AppColors.text3)),
             const SizedBox(height: 26),
-            TextField(
+            _field(
               controller: _username,
-              decoration: const InputDecoration(
-                hintText: '用户名（2-20 位字母、数字或中文）',
-                prefixIcon: Icon(Icons.person_outline),
-              ),
+              placeholder: '用户名（2-20 位字母、数字或中文）',
+              icon: CupertinoIcons.person,
             ),
-            const SizedBox(height: 14),
-            TextField(
+            const SizedBox(height: 12),
+            _field(
               controller: _password,
-              obscureText: _obscure,
-              decoration: InputDecoration(
-                hintText: '密码（至少 8 位，含字母和数字）',
-                prefixIcon: const Icon(Icons.lock_outline),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                      _obscure ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _obscure = !_obscure),
-                ),
-              ),
+              placeholder: '密码（至少 8 位，含字母和数字）',
+              icon: CupertinoIcons.lock,
+              obscure: true,
             ),
-            const SizedBox(height: 14),
-            TextField(
+            const SizedBox(height: 12),
+            _field(
               controller: _confirm,
-              obscureText: _obscure,
-              decoration: const InputDecoration(
-                hintText: '确认密码',
-                prefixIcon: Icon(Icons.lock_outline),
-              ),
+              placeholder: '确认密码',
+              icon: CupertinoIcons.lock,
+              obscure: true,
             ),
-            const SizedBox(height: 14),
-            TextField(
+            const SizedBox(height: 12),
+            _field(
               controller: _email,
+              placeholder: '邮箱（选填，用于找回密码）',
+              icon: CupertinoIcons.mail,
               keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                hintText: '邮箱（选填，用于找回密码）',
-                prefixIcon: Icon(Icons.mail_outline),
-              ),
             ),
             const SizedBox(height: 16),
+            // 协议勾选（iOS 开关风格）
             Row(
               children: [
-                Checkbox(
+                CupertinoSwitch(
                   value: _agree,
-                  activeColor: AppColors.brand,
-                  visualDensity: VisualDensity.compact,
-                  onChanged: (v) => setState(() => _agree = v ?? false),
+                  activeColor: AppColors.success,
+                  onChanged: (v) => setState(() => _agree = v),
                 ),
+                const SizedBox(width: 10),
                 const Expanded(
                   child: Text('我已阅读并同意《用户协议》和《隐私政策》',
-                      style: TextStyle(fontSize: 12, color: AppColors.text3)),
+                      style: AppText.caption),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: loading ? null : _register,
-                child: loading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Text('注册'),
-              ),
+            const SizedBox(height: 20),
+            IosButton(
+              label: loading ? '注册中…' : '注册',
+              onTap: _register,
+              enabled: !loading,
             ),
+            const SizedBox(height: 20),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _field({
+    required TextEditingController controller,
+    required String placeholder,
+    required IconData icon,
+    bool obscure = false,
+    TextInputType? keyboardType,
+  }) {
+    return CupertinoTextField(
+      controller: controller,
+      placeholder: placeholder,
+      obscureText: obscure ? _obscure : false,
+      keyboardType: keyboardType,
+      prefix: Padding(
+        padding: const EdgeInsets.only(left: 12),
+        child: Icon(icon, size: 19, color: AppColors.text3),
+      ),
+      suffix: obscure
+          ? CupertinoButton(
+              padding: const EdgeInsets.only(right: 8),
+              minSize: 0,
+              onPressed: () => setState(() => _obscure = !_obscure),
+              child: Icon(
+                  _obscure ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
+                  size: 19,
+                  color: AppColors.text3),
+            )
+          : null,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.separator, width: 0.5),
       ),
     );
   }

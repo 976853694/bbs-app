@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,11 +7,13 @@ import '../api/forum_api.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/ios.dart';
 import 'messages_page.dart';
 import 'search_page.dart';
 import 'topic_page.dart';
 
-/// 首页：公告 + 信息流 Tabs + 帖子列表（延续 ui-app 01-home）。
+/// 首页：iOS 大标题导航栏 + 信息流帖子列表。
+/// 含骨架屏加载、逐项入场动画、iOS 下拉刷新与弹性滚动。
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -24,6 +27,7 @@ class _HomePageState extends State<HomePage>
   String _cursor = '';
   bool _loading = false;
   bool _hasMore = true;
+  bool _initialLoading = true;
   String? _error;
 
   @override
@@ -32,10 +36,10 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
-    _load();
+    _load(refresh: true, initial: true);
   }
 
-  Future<void> _load({bool refresh = false}) async {
+  Future<void> _load({bool refresh = false, bool initial = false}) async {
     if (_loading) return;
     setState(() {
       _loading = true;
@@ -53,90 +57,132 @@ class _HomePageState extends State<HomePage>
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _initialLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [AppColors.brand, AppColors.brand2]),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              alignment: Alignment.center,
-              child: const Text('论',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700)),
-            ),
-            const SizedBox(width: 8),
-            const Text('社区论坛'),
-          ],
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.iosGroupedBg,
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
         ),
-        centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () =>
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchPage())),
+        slivers: [
+          // iOS 大标题导航栏（滚动时收起为普通标题）
+          CupertinoSliverNavigationBar(
+            largeTitle: const Text('社区论坛'),
+            backgroundColor: AppColors.surface.withOpacity(0.85),
+            border: const Border(
+              bottom: BorderSide(color: AppColors.separator, width: 0.5),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minSize: 0,
+                  onPressed: () => Navigator.push(
+                      context, iosRoute<void>(const SearchPage())),
+                  child: const Icon(CupertinoIcons.search, size: 23),
+                ),
+                const SizedBox(width: 14),
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minSize: 0,
+                  onPressed: () => Navigator.push(
+                      context, iosRoute<void>(const MessagesPage())),
+                  child: const Icon(CupertinoIcons.bell, size: 23),
+                ),
+              ],
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const MessagesPage())),
+          // iOS 下拉刷新
+          CupertinoSliverRefreshControl(
+            onRefresh: () => _load(refresh: true),
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        color: AppColors.brand,
-        onRefresh: () => _load(refresh: true),
-        child: _error != null && _topics.isEmpty
-            ? ListView(children: [
-                SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-                EmptyView(
-                    icon: '⚠️', title: '加载失败', sub: _error),
-              ])
-            : ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: _topics.length + 1,
-                itemBuilder: (context, i) {
-                  if (i == _topics.length) {
-                    if (_hasMore) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20),
-                        child: Center(
-                            child: CircularProgressIndicator(
-                                color: AppColors.brand)),
-                      );
-                    }
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Center(
-                          child: Text('— 已经到底啦 —',
-                              style: TextStyle(
-                                  color: AppColors.text3, fontSize: 11))),
-                    );
-                  }
-                  final t = _topics[i];
-                  return FeedCard(
-                    topic: t,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => TopicPage(topicId: t.id)),
-                    ),
-                  );
-                },
+          if (_initialLoading)
+            const SliverToBoxAdapter(
+              child: SizedBox(
+                height: 520,
+                child: FeedSkeleton(count: 6),
               ),
+            )
+          else if (_error != null && _topics.isEmpty)
+            SliverToBoxAdapter(
+              child: IosEmptyView(
+                icon: '⚠️',
+                title: '加载失败',
+                sub: _error,
+                action: IosButton(
+                  label: '重试',
+                  expand: false,
+                  onTap: () => _load(refresh: true),
+                ),
+              ),
+            )
+          else if (_topics.isEmpty)
+            const SliverToBoxAdapter(
+              child: IosEmptyView(
+                icon: '📭',
+                title: '还没有帖子',
+                sub: '成为第一个发帖的人吧',
+              ),
+            )
+          else ...[
+            SliverToBoxAdapter(
+              child: Container(
+                color: AppColors.surface,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < _topics.length; i++)
+                      FeedCard(
+                        topic: _topics[i],
+                        index: i,
+                        onTap: () => Navigator.push(
+                          context,
+                          iosRoute<void>(TopicPage(topicId: _topics[i].id)),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: _hasMore
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 22),
+                      child: Center(
+                        child: _loading
+                            ? const CupertinoActivityIndicator()
+                            : CupertinoButton(
+                                padding: EdgeInsets.zero,
+                                minSize: 0,
+                                onPressed: () => _load(),
+                                child: const Text(
+                                  '加载更多',
+                                  style: TextStyle(color: AppColors.iosBlue),
+                                ),
+                              ),
+                      ),
+                    )
+                  : const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 18),
+                      child: Center(
+                        child: Text('— 已经到底啦 —',
+                            style: TextStyle(
+                                color: AppColors.text3, fontSize: 12)),
+                      ),
+                    ),
+            ),
+          ],
+          const SliverToBoxAdapter(child: SizedBox(height: 30)),
+        ],
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,7 @@ import '../models.dart';
 import '../state/auth_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/ios.dart';
 
 /// 帖子详情：正文 Markdown + 楼层回复 + 点赞/收藏/分享/举报（延续 ui-app 04-topic）。
 class TopicPage extends StatefulWidget {
@@ -134,43 +136,35 @@ class _TopicPageState extends State<TopicPage> {
 
   Future<void> _report() async {
     final api = context.read<ForumApi>();
-    final reasonController = TextEditingController();
-    final category = await showModalBottomSheet<String>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const ListTile(title: Text('选择举报类型', textAlign: TextAlign.center)),
-            for (final c in ['垃圾广告', '色情低俗', '辱骂攻击', '违法违规', '其他'])
-              ListTile(
-                leading: const Icon(Icons.flag_outlined),
-                title: Text(c),
-                onTap: () => Navigator.pop(ctx, c),
-              ),
-          ],
-        ),
-      ),
+    // iOS 动作面板：选择举报类型
+    final category = await iosActionSheet<String>(
+      context,
+      title: '举报该帖子',
+      message: '请选择举报类型',
+      actions: [
+        for (final c in ['垃圾广告', '色情低俗', '辱骂攻击', '违法违规', '其他'])
+          CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(context, c),
+            child: Text(c,
+                style: const TextStyle(color: AppColors.danger)),
+          ),
+      ],
     );
     if (category == null) return;
-    final reason = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('举报理由'),
-        content: TextField(controller: reasonController, maxLines: 3),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('取消')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, reasonController.text),
-              child: const Text('提交')),
-        ],
-      ),
+    // iOS 输入弹窗：补充说明
+    final reason = await iosPrompt(
+      context,
+      title: '举报理由',
+      message: '类型：$category\n请补充说明（选填）',
+      placeholder: '例如：多次发布广告内容',
+      maxLines: 3,
+      maxLength: 200,
     );
+    if (reason == null) return;
     try {
-      await api.topicReport(widget.topicId, category, reason ?? '');
-      _toast('举报已提交');
+      await api.topicReport(widget.topicId, category, reason);
+      hapticMedium();
+      _toast('举报已提交，感谢反馈');
     } on ApiException catch (e) {
       _toast(e.message);
     }
@@ -186,47 +180,63 @@ class _TopicPageState extends State<TopicPage> {
   @override
   Widget build(BuildContext context) {
     final topic = _topic;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('帖子详情'),
-        actions: [
-          IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
-        ],
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.iosGroupedBg,
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('帖子详情'),
+        backgroundColor: AppColors.surface.withOpacity(0.9),
+        border: const Border(
+            bottom: BorderSide(color: AppColors.separator, width: 0.5)),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          minSize: 0,
+          onPressed: () {},
+          child: const Icon(CupertinoIcons.ellipsis, size: 22),
+        ),
       ),
-      body: _loading
-          ? const LoadingView()
-          : _error != null
-              ? EmptyView(icon: '⚠️', title: '加载失败', sub: _error)
-              : Column(
-                  children: [
-                    Expanded(
-                      child: ListView(
-                        children: [
-                          _head(topic!),
-                          _actions(topic),
-                          _replyHeader(),
-                          for (final r in _replies) _floor(r),
-                          if (_hasMore)
-                            TextButton(
-                              onPressed: _loadMore,
-                              child: const Text('加载更多回复',
-                                  style: TextStyle(color: AppColors.brand)),
-                            )
-                          else
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 14),
-                              child: Center(
-                                  child: Text('— 已加载全部回复 —',
-                                      style: TextStyle(
-                                          color: AppColors.text3,
-                                          fontSize: 11))),
-                            ),
-                        ],
+      child: SafeArea(
+        bottom: false,
+        child: _loading
+            ? const IosLoadingView(message: '加载中…')
+            : _error != null
+                ? IosEmptyView(icon: '⚠️', title: '加载失败', sub: _error,
+                    action: IosButton(
+                        label: '重试', expand: false, onTap: _load))
+                : Column(
+                    children: [
+                      Expanded(
+                        child: ListView(
+                          physics: const BouncingScrollPhysics(),
+                          children: [
+                            _head(topic!),
+                            _actions(topic),
+                            _replyHeader(),
+                            for (var i = 0; i < _replies.length; i++)
+                              FadeSlideIn(index: i, child: _floor(_replies[i])),
+                            if (_hasMore)
+                              CupertinoButton(
+                                onPressed: _loadMore,
+                                child: const Text('加载更多回复',
+                                    style: TextStyle(
+                                        color: AppColors.iosBlue,
+                                        fontSize: 15)),
+                              )
+                            else
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                child: Center(
+                                    child: Text('— 已加载全部回复 —',
+                                        style: TextStyle(
+                                            color: AppColors.text3,
+                                            fontSize: 11))),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                    _replyBar(),
-                  ],
-                ),
+                      _replyBar(),
+                    ],
+                  ),
+      ),
     );
   }
 
@@ -295,39 +305,38 @@ class _TopicPageState extends State<TopicPage> {
       child: Row(
         children: [
           Expanded(
-              child: _actBtn(_liked ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
-                  '赞 ${t.likeCount}', _liked ? AppColors.brand : null,
-                  _toggleLike)),
+              child: _actBtn(
+                  _liked ? CupertinoIcons.hand_thumbsup_fill
+                      : CupertinoIcons.hand_thumbsup,
+                  '赞 ${t.likeCount}',
+                  _liked ? AppColors.iosBlue : null,
+                  _toggleLike,
+                  animate: true)),
           Expanded(
               child: _actBtn(
-                  _favorited ? Icons.star : Icons.star_border,
+                  _favorited ? CupertinoIcons.star_fill : CupertinoIcons.star,
                   '收藏 ${t.favoriteCount}',
                   _favorited ? AppColors.gold : null,
-                  _toggleFavorite)),
-          Expanded(child: _actBtn(Icons.share_outlined, '分享', null, () {})),
+                  _toggleFavorite,
+                  animate: true)),
           Expanded(
-              child: _actBtn(Icons.flag_outlined, '举报', AppColors.danger,
+              child: _actBtn(CupertinoIcons.share, '分享', null, () {})),
+          Expanded(
+              child: _actBtn(CupertinoIcons.flag, '举报', AppColors.danger,
                   _report)),
         ],
       ),
     );
   }
 
-  Widget _actBtn(IconData icon, String label, Color? color, VoidCallback onTap) {
-    return InkWell(
+  Widget _actBtn(IconData icon, String label, Color? color, VoidCallback onTap,
+      {bool animate = false}) {
+    return _ActionButton(
+      icon: icon,
+      label: label,
+      color: color,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 20, color: color ?? AppColors.text2),
-            const SizedBox(height: 2),
-            Text(label,
-                style: TextStyle(fontSize: 11, color: color ?? AppColors.text2)),
-          ],
-        ),
-      ),
+      animate: animate,
     );
   }
 
@@ -478,8 +487,9 @@ class _TopicPageState extends State<TopicPage> {
               ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.send, color: AppColors.brand),
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            minSize: 0,
             onPressed: () {
               final auth = context.read<AuthState>();
               if (!auth.isLoggedIn) {
@@ -488,8 +498,93 @@ class _TopicPageState extends State<TopicPage> {
               }
               _submitReply();
             },
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(
+                  color: AppColors.iosBlue, shape: BoxShape.circle),
+              child: const Icon(CupertinoIcons.arrow_up,
+                  color: Colors.white, size: 20),
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// iOS 风格操作按钮（点赞/收藏时弹性缩放反馈）
+class _ActionButton extends StatefulWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    this.color,
+    required this.onTap,
+    this.animate = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color? color;
+  final VoidCallback onTap;
+  final bool animate;
+
+  @override
+  State<_ActionButton> createState() => _ActionButtonState();
+}
+
+class _ActionButtonState extends State<_ActionButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    _scale = Tween<double>(begin: 1, end: 1.3).animate(
+      CurvedAnimation(parent: _ctrl, curve: AppMotion.spring),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minSize: 0,
+      borderRadius: BorderRadius.zero,
+      onPressed: () {
+        if (widget.animate) {
+          hapticMedium();
+          _ctrl.forward(from: 0);
+        }
+        widget.onTap();
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ScaleTransition(
+              scale: _scale,
+              child: Icon(widget.icon,
+                  size: 20, color: widget.color ?? AppColors.text2),
+            ),
+            const SizedBox(height: 2),
+            Text(widget.label,
+                style: TextStyle(
+                    fontSize: 11, color: widget.color ?? AppColors.text2)),
+          ],
+        ),
       ),
     );
   }

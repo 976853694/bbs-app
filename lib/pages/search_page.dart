@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,9 +7,10 @@ import '../api/forum_api.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/ios.dart';
 import 'topic_page.dart';
 
-/// 搜索：关键词 + 排序 + 结果（延续 ui-app 06-search）。
+/// 搜索：iOS 搜索框 + 排序分段 + 结果列表（带入场动画）。
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
 
@@ -22,6 +24,9 @@ class _SearchPageState extends State<SearchPage> {
   String _order = 'relevance';
   List<TopicBrief> _topics = [];
   bool _loading = false;
+
+  static const _orders = ['relevance', 'latest', 'most_replies', 'most_likes'];
+  static const _orderLabels = ['相关度', '最新', '最多回复', '最多点赞'];
 
   Future<void> _search() async {
     final kw = _controller.text.trim();
@@ -46,97 +51,81 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          controller: _controller,
-          autofocus: true,
-          textInputAction: TextInputAction.search,
-          onSubmitted: (_) => _search(),
-          decoration: InputDecoration(
-            hintText: '搜索帖子、用户、版块…',
-            isDense: true,
-            filled: true,
-            fillColor: AppColors.surface2,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(19),
-              borderSide: BorderSide.none,
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.iosGroupedBg,
+      child: SafeArea(
+        child: Column(
+          children: [
+            // iOS 搜索框
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: CupertinoSearchTextField(
+                      controller: _controller,
+                      autofocus: true,
+                      placeholder: '搜索帖子、用户、版块…',
+                      onSubmitted: (_) => _search(),
+                      borderRadius: BorderRadius.circular(10),
+                      backgroundColor: AppColors.fill,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    minSize: 0,
+                    onPressed: _search,
+                    child: const Text('搜索',
+                        style: TextStyle(
+                            color: AppColors.iosBlue, fontSize: 15)),
+                  ),
+                ],
+              ),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: _search,
-            child: const Text('搜索', style: TextStyle(color: AppColors.brand)),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              children: [
-                _orderChip('relevance', '相关度'),
-                _orderChip('latest', '最新'),
-                _orderChip('most_replies', '最多回复'),
-                _orderChip('most_likes', '最多点赞'),
-              ],
+            // 排序分段控件
+            IosSegmented(
+              tabs: _orderLabels,
+              selected: _orders.indexOf(_order),
+              onChanged: (i) => setState(() {
+                _order = _orders[i];
+                if (_keyword.isNotEmpty) _search();
+              }),
             ),
-          ),
-          Expanded(
-            child: _loading
-                ? const LoadingView()
-                : _keyword.isEmpty
-                    ? const EmptyView(icon: '🔍', title: '输入关键词搜索')
-                    : _topics.isEmpty
-                        ? const EmptyView(icon: '📭', title: '没有找到相关内容')
-                        : ListView(
-                            children: [
-                              for (final t in _topics)
-                                FeedCard(
-                                  topic: t,
+            Expanded(
+              child: _loading
+                  ? const FeedSkeleton(count: 6)
+                  : _keyword.isEmpty
+                      ? const IosEmptyView(
+                          icon: '🔍',
+                          title: '输入关键词搜索',
+                          sub: '支持搜索帖子标题、内容与标签',
+                        )
+                      : _topics.isEmpty
+                          ? const IosEmptyView(
+                              icon: '📭',
+                              title: '没有找到相关内容',
+                              sub: '换个关键词试试',
+                            )
+                          : ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: _topics.length,
+                              itemBuilder: (context, i) => Container(
+                                color: AppColors.surface,
+                                child: FeedCard(
+                                  topic: _topics[i],
+                                  index: i,
                                   onTap: () => Navigator.push(
                                     context,
-                                    MaterialPageRoute(
-                                        builder: (_) =>
-                                            TopicPage(topicId: t.id)),
+                                    iosRoute<void>(
+                                        TopicPage(topicId: _topics[i].id)),
                                   ),
                                 ),
-                            ],
-                          ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _orderChip(String value, String label) {
-    final on = _order == value;
-    return GestureDetector(
-      onTap: () => setState(() {
-        _order = value;
-        if (_keyword.isNotEmpty) _search();
-      }),
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 13),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: on ? AppColors.brandLight : AppColors.surface,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-              color: on ? AppColors.brandLight : AppColors.border),
+                              ),
+                            ),
+            ),
+          ],
         ),
-        child: Text(label,
-            style: TextStyle(
-              fontSize: 12,
-              color: on ? AppColors.brand : AppColors.text2,
-              fontWeight: on ? FontWeight.w600 : FontWeight.w400,
-            )),
       ),
     );
   }

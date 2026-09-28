@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../models.dart';
 import '../theme.dart';
+import 'ios.dart';
 
 /// 头像：有图显示网络图，无图显示首字 + 色板底色。
 class UserAvatar extends StatelessWidget {
@@ -202,23 +203,56 @@ class LoadingView extends StatelessWidget {
   }
 }
 
-/// 信息流帖子卡片（延续 ui-app feed-item）。
+/// 信息流帖子卡片（iOS 风格：按压高亮 + 渐显动画 + 系统蓝版块名）。
 class FeedCard extends StatelessWidget {
-  const FeedCard({super.key, required this.topic, this.onTap});
+  const FeedCard({super.key, required this.topic, this.onTap, this.index = 0});
+
+  final TopicBrief topic;
+  final VoidCallback? onTap;
+  /// 用于列表入场动画的顺序索引
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeSlideIn(
+      index: index,
+      child: _FeedCardBody(topic: topic, onTap: onTap),
+    );
+  }
+}
+
+class _FeedCardBody extends StatefulWidget {
+  const _FeedCardBody({required this.topic, this.onTap});
 
   final TopicBrief topic;
   final VoidCallback? onTap;
 
   @override
+  State<_FeedCardBody> createState() => _FeedCardBodyState();
+}
+
+class _FeedCardBodyState extends State<_FeedCardBody> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(bottom: BorderSide(color: AppColors.border2)),
-        ),
+    final topic = widget.topic;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              hapticLight();
+              widget.onTap!();
+            },
+      // iOS 按压时整行轻微变灰（iOS 列表行高亮）
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        color: _pressed ? AppColors.fill.withOpacity(0.55) : AppColors.surface,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -276,7 +310,7 @@ class FeedCard extends StatelessWidget {
                     children: [
                       Text(topic.board.name,
                           style: const TextStyle(
-                              color: AppColors.brand, fontSize: 11)),
+                              color: AppColors.iosBlue, fontSize: 11)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -320,28 +354,29 @@ class FeedCard extends StatelessWidget {
   }
 }
 
-/// 白色圆角卡片容器。
+/// iOS 风格白色圆角卡片容器（圆角 14，无重阴影）。
 class AppCard extends StatelessWidget {
-  const AppCard({super.key, required this.child, this.padding});
+  const AppCard({
+    super.key,
+    required this.child,
+    this.padding,
+    this.margin = const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+  });
 
   final Widget child;
   final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry margin;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      margin: margin,
       padding: padding,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A101828),
-            blurRadius: 2,
-            offset: Offset(0, 1),
-          ),
-        ],
+        borderRadius: AppRadius.card,
       ),
+      clipBehavior: Clip.antiAlias,
       child: child,
     );
   }

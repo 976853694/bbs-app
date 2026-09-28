@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,8 +7,9 @@ import '../api/forum_api.dart';
 import '../models.dart';
 import '../state/auth_state.dart';
 import '../theme.dart';
+import '../widgets/ios.dart';
 
-/// 账号设置：资料编辑 + 设备管理（延续 ui-app 17-settings）。
+/// 账号设置：资料编辑 + 设备管理（iOS 分组列表风格）。
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -42,31 +44,26 @@ class _SettingsPageState extends State<SettingsPage> {
     final auth = context.read<AuthState>();
     final user = auth.user;
     if (user == null) return;
-    final controller = TextEditingController(text: user.signature);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('修改个性签名'),
-        content: TextField(controller: controller, maxLength: 120),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, controller.text),
-              child: const Text('保存')),
-        ],
-      ),
+    final result = await iosPrompt(
+      context,
+      title: '修改个性签名',
+      initialValue: user.signature,
+      placeholder: '介绍一下自己…',
+      maxLength: 120,
     );
-    if (result != null) {
-      final api = context.read<ForumApi>();
-      try {
-        await api.updateMe(signature: result);
-        await auth.refreshUser();
-      } on ApiException catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(e.message)));
-        }
+    if (result == null) return;
+    final api = context.read<ForumApi>();
+    try {
+      await api.updateMe(signature: result);
+      await auth.refreshUser();
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('已保存')));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
     }
   }
@@ -75,117 +72,117 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthState>();
     final user = auth.user;
-    return Scaffold(
-      appBar: AppBar(title: const Text('账号设置')),
-      body: user == null
-          ? const SizedBox.shrink()
-          : ListView(
-              padding: const EdgeInsets.only(bottom: 24),
-              children: [
-                _group('个人资料', [
-                  ListTile(
-                    leading: const Icon(Icons.badge_outlined, color: AppColors.brand),
-                    title: const Text('昵称'),
-                    trailing: Text(user.displayName,
-                        style: const TextStyle(color: AppColors.text3)),
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.iosGroupedBg,
+      navigationBar: const CupertinoNavigationBar(
+        middle: Text('账号设置'),
+        backgroundColor: Colors.white,
+        border: Border(bottom: BorderSide(color: AppColors.separator)),
+      ),
+      child: SafeArea(
+        child: user == null
+            ? const IosEmptyView(icon: '👤', title: '请先登录')
+            : ListView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.only(top: 8, bottom: 30),
+                children: [
+                  IosGroupCard(
+                    header: '个人资料',
+                    children: [
+                      IosCell(
+                        icon: CupertinoIcons.person,
+                        title: '昵称',
+                        value: user.displayName,
+                      ),
+                      IosCell(
+                        icon: CupertinoIcons.pencil,
+                        title: '个性签名',
+                        value: user.signature.isEmpty
+                            ? '这个人很懒～'
+                            : user.signature,
+                        showArrow: true,
+                        onTap: _editSignature,
+                      ),
+                      IosCell(
+                        icon: CupertinoIcons.mail,
+                        title: '用户名',
+                        value: '@${user.username}',
+                      ),
+                    ],
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.edit_note, color: AppColors.brand),
-                    title: const Text('个性签名'),
-                    trailing: const Icon(Icons.chevron_right,
-                        color: AppColors.text3),
-                    onTap: _editSignature,
+                  IosGroupCard(
+                    header: '安全',
+                    children: [
+                      IosCell(
+                        icon: CupertinoIcons.device_phone_portrait,
+                        iconBg: AppColors.purple,
+                        title: '设备管理',
+                        subtitle: '${_devices.length} 台在线设备',
+                        showArrow: true,
+                        onTap: _showDevices,
+                      ),
+                    ],
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.mail_outline, color: AppColors.brand),
-                    title: const Text('邮箱'),
-                    trailing: Text(user.username,
-                        style: const TextStyle(color: AppColors.text3)),
+                  IosGroupCard(
+                    children: [
+                      IosCell(
+                        title: '退出登录',
+                        isDestructive: true,
+                        centerTitle: true,
+                        onTap: () async {
+                          final ok = await iosConfirm(
+                            context,
+                            title: '退出登录',
+                            message: '确定要退出当前账号吗？',
+                            confirmText: '退出',
+                            isDestructive: true,
+                          );
+                          if (!ok || !context.mounted) return;
+                          await auth.logout();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('已退出登录')));
+                          }
+                        },
+                      ),
+                    ],
                   ),
-                ]),
-                _group('安全', [
-                  ListTile(
-                    leading:
-                        const Icon(Icons.devices, color: AppColors.purple),
-                    title: const Text('设备管理'),
-                    subtitle: Text('${_devices.length} 台在线设备'),
-                    trailing: const Icon(Icons.chevron_right,
-                        color: AppColors.text3),
-                    onTap: _showDevices,
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.lock_outline, color: AppColors.purple),
-                    title: const Text('修改密码'),
-                    trailing: const Icon(Icons.chevron_right,
-                        color: AppColors.text3),
-                  ),
-                ]),
-              ],
-            ),
-    );
-  }
-
-  Widget _group(String title, List<Widget> children) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(title,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-        ),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(children: children),
-        ),
-      ],
+                ],
+              ),
+      ),
     );
   }
 
   void _showDevices() {
-    showModalBottomSheet(
+    showCupertinoModalPopup(
       context: context,
-      builder: (ctx) => SafeArea(
-        child: _loadingDevices
-            ? const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator()))
-            : ListView(
-                shrinkWrap: true,
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('设备管理'),
+        message: Text('共 ${_devices.length} 台设备'),
+        actions: [
+          for (final d in _devices)
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(ctx),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('设备管理',
-                        textAlign: TextAlign.center,
+                  const Icon(CupertinoIcons.device_phone_portrait, size: 18),
+                  const SizedBox(width: 8),
+                  Text(d.deviceName),
+                  if (d.current) ...[
+                    const SizedBox(width: 6),
+                    const Text('（当前）',
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700)),
-                  ),
-                  for (final d in _devices)
-                    ListTile(
-                      leading: const Icon(Icons.smartphone),
-                      title: Text(d.deviceName),
-                      subtitle: Text('最近活跃 ${d.lastSeen}'),
-                      trailing: d.current
-                          ? const Text('当前设备',
-                              style: TextStyle(
-                                  color: AppColors.brand, fontSize: 12))
-                          : TextButton(
-                              onPressed: () async {
-                                final api = context.read<ForumApi>();
-                                await api.deviceLogout(d.id);
-                                _loadDevices();
-                              },
-                              child: const Text('下线',
-                                  style:
-                                      TextStyle(color: AppColors.danger)),
-                            ),
-                    ),
+                            color: AppColors.iosBlue, fontSize: 13)),
+                  ],
                 ],
               ),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('关闭', style: TextStyle(color: AppColors.iosBlue)),
+        ),
       ),
     );
   }

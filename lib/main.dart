@@ -13,6 +13,7 @@ import 'pages/me_page.dart';
 import 'pages/messages_page.dart';
 import 'state/auth_state.dart';
 import 'theme.dart';
+import 'widgets/ios.dart';
 import 'widgets/main_scaffold.dart';
 
 void main() async {
@@ -87,7 +88,7 @@ class _HomeState extends State<_Home> {
     }
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const EditorPage()),
+      iosRoute<bool>(const EditorPage()),
     );
     if (result == true && mounted) {
       ScaffoldMessenger.of(context)
@@ -96,10 +97,11 @@ class _HomeState extends State<_Home> {
   }
 
   /// 引导登录，登录成功返回 true，取消返回 false。
+  /// 用 iOS 转场（右滑进入，可边缘滑动返回）。
   Future<bool> _requireLogin() async {
     final result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
+      iosRoute<bool>(const LoginPage()),
     );
     return result == true;
   }
